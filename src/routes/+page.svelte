@@ -136,7 +136,8 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 		} finally {
 			disableTextInput = false;
 			textInputValue = '';
-			textInputRef?.focus();
+			setTimeout(()=>textInputRef?.focus(), 500);
+			;
 		}
 	};
 
