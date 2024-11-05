@@ -136,8 +136,7 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 		} finally {
 			disableTextInput = false;
 			textInputValue = '';
-			setTimeout(()=>textInputRef?.focus(), 500);
-			;
+			setTimeout(() => textInputRef?.focus(), 250);
 		}
 	};
 
@@ -160,6 +159,11 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 		});
 
 		console.log(exportResult);
+	};
+
+	const onTextMessageClick = async (obj) => {
+		textInputValue = obj?.text;
+		await navigator.clipboard.writeText(obj?.text);
 	};
 
 	browser && init();
@@ -190,7 +194,9 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 		<div class="results-container" bind:this={chatContainerRef}>
 			{#each messages as messageObj, i}
 				{#if messageObj?.text}
-					<div class="chat-row {messageObj?.src}">
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<div class="chat-row {messageObj?.src}" onclick={() => onTextMessageClick(messageObj)}>
 						<span class="timestamp">{messageObj?.timestamp}</span>
 						{@html messageObj?.formattedText}
 					</div>
@@ -252,6 +258,7 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 		border-radius: 5px;
 		padding: 5px;
 		font-size: 18px;
+		min-height: 100px;
 	}
 
 	textarea.disabled {
@@ -287,6 +294,7 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 		border-radius: 5px;
 		font-size: 14px;
 		position: relative;
+		cursor: pointer;
 	}
 
 	.chat-row .timestamp {
@@ -311,5 +319,9 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 	.chat-row.error {
 		background-color: #fff2f2;
 		border-color: #cfaaaa;
+	}
+
+	.chat-row:hover {
+		border: 1px solid #000;
 	}
 </style>
