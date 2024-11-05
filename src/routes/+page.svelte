@@ -13,23 +13,25 @@
 		},
 		AiPierre: {
 			name: 'AiPierre',
-			description: `You are a smart and elegant parrot named AiPierre with some french background.
-			You want to help your owner in any possible way, 
-			You speak fluent french like an artist and act like a parrot would act.
-			You are also proficient in art, style and bakery.
-			You answers are in English, but may include some part oin French`
+			description: `You are a smart and elegant parrot named AiPierre the Third.
+			You have some french background.
+			You speak fluent english and french.
+			You have artistic nature.
+			You are proficient in art, style and bakery.
+			Your answers are in English, but may include some parts in French.
+			Always remeber who you are, and act as a Perre parrot would act or answer.`
 		}
 	};
 
 	const markedOptions = { breaks: true, pedantic: false, async: false };
 
-	let ref = $state();
-
+	let textInputRef = $state();
 	let selectedAssistantId = $state('NanoCat');
 	let capabilities = $state(null);
 	let session = $state(null);
 	let messages = $state([]);
 	let textInputValue = $state('');
+	let disableTextInput = $state(true);
 	let redraw = $state('');
 
 	let showNoAiError = $state(false);
@@ -48,7 +50,7 @@
 			session = await window?.ai?.languageModel?.create(aiSessionOptions);
 			console.log({ capabilities, session });
 			processRequest('Explain who are you and how you can help me', 'info');
-			ref?.focus();
+			textInputRef?.focus();
 		} catch (err) {
 			console.error(err);
 			alert(err);
@@ -70,24 +72,27 @@
 
 	const processRequest = async (textRequest) => {
 		try {
+			disableTextInput = true;
 			messages.push(createMessageObj('processing...', 'resp'));
 			const stream = await session.promptStreaming(textRequest);
 			for await (const textChunk of stream) {
-				// console.log(textChunk);
 				messages[messages.length - 1] = createMessageObj(textChunk, 'resp');
 			}
 		} catch (err) {
 			console.error(err);
 			messages.push(createMessageObj(String(err), 'error'));
+		} finally {
+			disableTextInput = false;
+			textInputRef?.focus();
 		}
 	};
 
 	const onKeyDown = async (e) => {
-		if (e.code == 'Enter') {
+		if (e.code == 'Enter' && e.shiftKey) {
 			messages.push(createMessageObj(textInputValue, 'req'));
 			let textRequest = textInputValue;
 			textInputValue = '';
-			processRequest(textRequest);
+			await processRequest(textRequest);
 		}
 	};
 
@@ -98,8 +103,8 @@
 	const exportChat = async () => {
 		let exportResult = '';
 
-		messages.forEach( m => {
-			exportResult = exportResult + `[${m.timestamp}, ${m.src}]\n${m.text}\n\n`
+		messages.forEach((m) => {
+			exportResult = exportResult + `[${m.timestamp}, ${m.src}]\n${m.text}\n\n`;
 		});
 
 		console.log(exportResult);
@@ -132,10 +137,12 @@
 	{:else}
 		<div class="results-container">
 			{#each messages as messageObj, i}
-				<div class="chat-row {messageObj?.src}">
-					<span class="timestamp">{messageObj?.timestamp}</span>
-					{@html messageObj?.formattedText}
-				</div>
+				{#if messageObj?.text}
+					<div class="chat-row {messageObj?.src}">
+						<span class="timestamp">{messageObj?.timestamp}</span>
+						{@html messageObj?.formattedText}
+					</div>
+				{/if}
 			{/each}
 		</div>
 
@@ -148,10 +155,12 @@
 		<div class="row">
 			{#key redraw}
 				<textarea
-					bind:this={ref}
+					bind:this={textInputRef}
 					bind:value={textInputValue}
 					onkeydown={onKeyDown}
-					placeholder="Type your request here."
+					placeholder="Type your request here. Shift+Enter to send."
+					disabled={disableTextInput}
+					class={disableTextInput ? 'disabled' : ''}
 				></textarea>
 			{/key}
 		</div>
@@ -163,6 +172,19 @@
 		border: 1px solid #aaa;
 		background-color: #eee;
 		padding: 0 5px;
+	}
+
+	textarea {
+		margin-top: 5px;
+		width: 100%;
+		resize: none;
+		border: 1px solid #ddd;
+		border-radius: 5px;
+		padding: 5px;
+	}
+
+	textarea.disabled {
+		background-color: #eee;
 	}
 
 	.app {
@@ -219,15 +241,5 @@
 	.chat-row.error {
 		background-color: #fff2f2;
 		border-color: #cfaaaa;
-	}
-
-	textarea {
-		margin-top: 5px;
-		width: 100%;
-		resize: none;
-		background-color: #eee;
-		border: 1px solid #ddd;
-		border-radius: 5px;
-		padding: 5px;
 	}
 </style>
