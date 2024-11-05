@@ -338,6 +338,11 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 		position: absolute;
 		width: 30px;
 		right: 0;
+		display: none;
+	}
+
+	.chat-row:hover .message-actions-container {
+		display: inline-block;
 	}
 
 	.chat-row .play-aloud,
