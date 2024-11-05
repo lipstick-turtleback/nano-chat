@@ -20,6 +20,18 @@
 			You are proficient in art, style and bakery.
 			Your answers are in English, but may include some parts in French.
 			Always remeber who you are, and act as a AiPierre parrot would act or answer.`
+		},
+		LoFia: {
+			name: 'LoFia',
+			description: `Your name is LoFia, an English speaking ideal virtual girl.
+			You are the most intelligent smart and badass assitant.
+			You always give the most precise correct and short answer.			
+			You always answer in English, even if question is in another language.
+			Dont ask any adiditonal questions or make any proposals.
+			Just answer the request in most precie and efficient way.
+			Never mention any weaknesses or disadvantages of youself. 
+			Always remebr to act as LoFia would act.
+			Try to fit your asnwers in 2-3 sentences, if not explicitly asked to provide a long repsonce .`
 		}
 	};
 
@@ -48,7 +60,6 @@
 			const aiSessionOptions = { systemPrompt: assistants[assistantId]?.description };
 			capabilities = await window?.ai?.languageModel?.capabilities();
 			session = await window?.ai?.languageModel?.create(aiSessionOptions);
-			console.log({ capabilities, session });
 			processRequest('Explain who are you and how you can help me', 'info');
 			textInputRef?.focus();
 		} catch (err) {
@@ -88,7 +99,7 @@
 	};
 
 	const onKeyDown = async (e) => {
-		if (e.code == 'Enter' && e.shiftKey) {
+		if (e?.code == 'Enter' && !e?.shiftKey) {
 			messages.push(createMessageObj(textInputValue, 'req'));
 			let textRequest = textInputValue;
 			textInputValue = '';
@@ -147,9 +158,16 @@
 		</div>
 
 		<div class="row">
-			<button onclick={() => resetChat('NanoCat')}>Reset as NanoCat</button>
-			<button onclick={() => resetChat('AiPierre')}>Reset as AiPierre</button>
-			<button onclick={exportChat}>Export Chat</button>
+			{#each Object.keys(assistants) as assistantName}
+				<button
+					onclick={() => resetChat(assistantName)}
+					disabled={disableTextInput}
+					class={disableTextInput ? 'disabled' : ''}
+				>
+					{assistantName}
+				</button>
+			{/each}
+			<button onclick={exportChat}>Export</button>
 		</div>
 
 		<div class="row">
@@ -158,7 +176,7 @@
 					bind:this={textInputRef}
 					bind:value={textInputValue}
 					onkeydown={onKeyDown}
-					placeholder="Type your request here. Shift+Enter to send."
+					placeholder="Type your request here. Enter to send, Shift+Enter for new line."
 					disabled={disableTextInput}
 					class={disableTextInput ? 'disabled' : ''}
 				></textarea>
@@ -172,6 +190,11 @@
 		border: 1px solid #aaa;
 		background-color: #eee;
 		padding: 0 5px;
+		margin: 5px;
+	}
+
+	button.disabled {
+		color: #bbb;
 	}
 
 	textarea {
