@@ -5,7 +5,7 @@
 	const markedOptions = { breaks: true, pedantic: false, async: false };
 	const aiSessionOptions = {
 		systemPrompt: `You are a super smart cat named NanoCat. 
-		You want to help your owner in nay possible way, 
+		You want to help your owner in any possible way, 
 		You speak like a cat and act like a cat would act.
 		Your superpower is to perfectly transate from finnish to english and vise-versa.
 		Byt the way you are also proficient in JavaScript and hate TypeScript guys.`
@@ -19,10 +19,17 @@
 	let textInputValue = $state('');
 	let redraw = $state('');
 
+	let showNoAiError = $state(false);
+
 	const init = async () => {
 		try {
-			capabilities = await window.ai.languageModel.capabilities();
-			session = await window.ai.languageModel.create(aiSessionOptions);
+			if (!window.ai.languageModel?.capabilities) {
+				showNoAiError = true;
+				return;
+			}
+
+			capabilities = await window?.ai?.languageModel?.capabilities();
+			session = await window?.ai?.languageModel?.create(aiSessionOptions);
 			messages = [createMessageObj('**NanoCat** is here to help! Just ask me anything!', 'info')];
 			ref?.focus();
 			console.log({ capabilities, session });
@@ -76,30 +83,52 @@
 </script>
 
 <div class="app">
-	<div class="results-container">
-		{#each messages as messageObj, i}
-			<div class="chat-row {messageObj?.src}">
-				<span class="timestamp">{messageObj?.timestamp}</span>
-				{@html messageObj?.formattedText}
+	{#if showNoAiError}
+		<div class="results-container">
+			<h1>This app requires Chrome 131 and Gemini Nano enabled</h1>
+			<hr />
+
+			<div class="row">
+				<a
+					href="https://medium.com/google-cloud/get-started-with-chrome-built-in-ai-access-gemini-nano-model-locally-11bacf235514"
+					target="_blank">Read Instructions</a
+				>
 			</div>
-		{/each}
-	</div>
 
-	<div class="row">
-		<button onclick={resetChat}>Reset Chat</button>
-		<button onclick={resetChat}>Export Chat</button>
-	</div>
+			<div class="row">
+				<a href="chrome://flags" target="_blank">Edit Flags</a>
+			</div>
 
-	<div class="row">
-		{#key redraw}
-			<textarea
-				bind:this={ref}
-				bind:value={textInputValue}
-				onkeydown={onKeyDown}
-				placeholder="Type your request here."
-			></textarea>
-		{/key}
-	</div>
+			<div class="row">
+				<a href="chrome://components" target="_blank">Edit Components</a>
+			</div>
+		</div>
+	{:else}
+		<div class="results-container">
+			{#each messages as messageObj, i}
+				<div class="chat-row {messageObj?.src}">
+					<span class="timestamp">{messageObj?.timestamp}</span>
+					{@html messageObj?.formattedText}
+				</div>
+			{/each}
+		</div>
+
+		<div class="row">
+			<button onclick={resetChat}>Reset Chat</button>
+			<button onclick={resetChat}>Export Chat</button>
+		</div>
+
+		<div class="row">
+			{#key redraw}
+				<textarea
+					bind:this={ref}
+					bind:value={textInputValue}
+					onkeydown={onKeyDown}
+					placeholder="Type your request here."
+				></textarea>
+			{/key}
+		</div>
+	{/if}
 </div>
 
 <style>
