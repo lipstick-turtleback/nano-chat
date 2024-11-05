@@ -2,17 +2,30 @@
 	import { browser } from '$app/environment';
 	import { marked } from 'marked';
 
-	const markedOptions = { breaks: true, pedantic: false, async: false };
-	const aiSessionOptions = {
-		systemPrompt: `You are a super smart cat named NanoCat. 
-		You want to help your owner in any possible way, 
-		You speak like a cat and act like a cat would act.
-		Your superpower is to perfectly transate from finnish to english and vise-versa.
-		Byt the way you are also proficient in JavaScript and hate TypeScript guys.`
+	const assistants = {
+		NanoCat: {
+			name: 'NanoCat',
+			description: `You are a super smart cat named NanoCat. 
+			You want to help your owner in any possible way, 
+			You speak like a cat and act like a cat would act.
+			Your superpower is to perfectly transate from finnish to english and vise-versa.
+			Byt the way you are also proficient in JavaScript and hate TypeScript guys.`
+		},
+		AiPierre: {
+			name: 'AiPierre',
+			description: `You are a smart and elegant parrot named AiPierre with some french background.
+			You want to help your owner in any possible way, 
+			You speak fluent french like an artist and act like a parrot would act.
+			You are also proficient in art, style and bakery.
+			You answers are in English, but may include some part oin French`
+		}
 	};
+
+	const markedOptions = { breaks: true, pedantic: false, async: false };
 
 	let ref = $state();
 
+	let selectedAssistantId = $state('NanoCat');
 	let capabilities = $state(null);
 	let session = $state(null);
 	let messages = $state([]);
@@ -21,19 +34,21 @@
 
 	let showNoAiError = $state(false);
 
-	const init = async () => {
+	const init = async (assistantId = 'NanoCat') => {
 		try {
 			if (!window.ai.languageModel?.capabilities) {
 				showNoAiError = true;
 				return;
 			}
-
+			session?.destroy();
+			messages = [];
+			selectedAssistantId = assistantId;
+			const aiSessionOptions = { systemPrompt: assistants[assistantId]?.description };
 			capabilities = await window?.ai?.languageModel?.capabilities();
 			session = await window?.ai?.languageModel?.create(aiSessionOptions);
-			messages = [createMessageObj('**NanoCat** is here to help! Just ask me anything!', 'info')];
-			ref?.focus();
 			console.log({ capabilities, session });
-			processRequest('Explain who are you and how you can help me');
+			processRequest('Explain who are you and how you can help me', 'info');
+			ref?.focus();
 		} catch (err) {
 			console.error(err);
 			alert(err);
@@ -58,11 +73,12 @@
 			messages.push(createMessageObj('processing...', 'resp'));
 			const stream = await session.promptStreaming(textRequest);
 			for await (const textChunk of stream) {
-				console.log(textChunk);
+				// console.log(textChunk);
 				messages[messages.length - 1] = createMessageObj(textChunk, 'resp');
 			}
 		} catch (err) {
-			messages.push(createMessageObj(err, 'err'));
+			console.error(err);
+			messages.push(createMessageObj(String(err), 'error'));
 		}
 	};
 
@@ -75,8 +91,18 @@
 		}
 	};
 
-	const resetChat = async () => {
-		init();
+	const resetChat = async (assitantId = 'NanoCat') => {
+		init(assitantId);
+	};
+
+	const exportChat = async () => {
+		let exportResult = '';
+
+		messages.forEach( m => {
+			exportResult = exportResult + `[${m.timestamp}, ${m.src}]\n${m.text}\n\n`
+		});
+
+		console.log(exportResult);
 	};
 
 	browser && init();
@@ -114,8 +140,9 @@
 		</div>
 
 		<div class="row">
-			<button onclick={resetChat}>Reset Chat</button>
-			<button onclick={resetChat}>Export Chat</button>
+			<button onclick={() => resetChat('NanoCat')}>Reset as NanoCat</button>
+			<button onclick={() => resetChat('AiPierre')}>Reset as AiPierre</button>
+			<button onclick={exportChat}>Export Chat</button>
 		</div>
 
 		<div class="row">
@@ -168,7 +195,6 @@
 		border-radius: 5px;
 		font-size: 12px;
 		position: relative;
-		padding-right: 50px;
 	}
 
 	.chat-row .timestamp {
@@ -190,7 +216,7 @@
 		border-color: #aaaacf;
 	}
 
-	.chat-row.err {
+	.chat-row.error {
 		background-color: #fff2f2;
 		border-color: #cfaaaa;
 	}
