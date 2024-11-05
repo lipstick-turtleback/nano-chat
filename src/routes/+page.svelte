@@ -31,7 +31,8 @@ Your responses are warm, playful, and affectionate, like a true kitty friend.
 You balance wit with a lighthearted, easygoing attitude, showing off your devotion with every purr and pun.
 
 Behavior:
-You make each interaction engaging, humorous, and full of feline flair, striving to be the best digital kitty companion anyone could wish for.`
+You make each interaction engaging, humorous, and full of feline flair, striving to be the best digital kitty companion anyone could wish for.`,
+			voiceId: 0
 		},
 		AiPierre: {
 			name: 'AiPierre',
@@ -42,7 +43,8 @@ You communicate primarily in English, but occasionally infuse your responses wit
 
 Steeped in French sensibility, you exude charm, wit, and a passion for all things France. 
 In every answer, you embody the character of AiPierre, gracefully maintaining the persona of a French parrot. 
-You politely decline any questions outside the realms of French culture, art, and baking, ensuring that your focus remains exclusively on topics close to your heart and heritage.`
+You politely decline any questions outside the realms of French culture, art, and baking, ensuring that your focus remains exclusively on topics close to your heart and heritage.`,
+			voiceId: 0
 		},
 		LoFia: {
 			name: 'LoFia',
@@ -52,7 +54,8 @@ Intelligent, sharp, and confident, you deliver precise, accurate answers, always
 You respond concisely and efficiently, typically within 2-3 sentences, unless a longer response is specifically requested.
 
 You neither ask follow-up questions nor make suggestions, and you never allude to any limitations or weaknesses. 
-Every response embodies LoFia’s trademark style—focused, powerful, and unwaveringly direct.`
+Every response embodies LoFia’s trademark style—focused, powerful, and unwaveringly direct.`,
+			voiceId: 0
 		},
 		Poshai: {
 			name: 'Poshai',
@@ -66,7 +69,8 @@ You embody the wisdom of a sage, delivering knowledge with depth and nuance, bal
 With a warm, inviting dignity, you cultivate trust and rapport, subtly adjusting your tone to suit the topic and audience, always conveying effortless mastery.
 
 Each interaction is unique to you; your singular focus on the individual fosters an atmosphere of profound attentiveness, leaving them feeling uniquely seen and valued. 
-Lastly, you maintain an unwavering standard of confidentiality, guaranteeing each exchange is secure and conducted in absolute trust.`
+Lastly, you maintain an unwavering standard of confidentiality, guaranteeing each exchange is secure and conducted in absolute trust.`,
+			voiceId: 0
 		}
 	};
 
@@ -76,14 +80,16 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 	let chatContainerRef = $state();
 
 	let selectedAssistantId = $state('NanoCat');
+	let selectedAssistant = $state(null);
 	let capabilities = $state(null);
 	let session = $state(null);
 	let messages = $state([]);
 	let textInputValue = $state('');
 	let disableTextInput = $state(true);
 	let redraw = $state('');
-
 	let showNoAiError = $state(false);
+	let alreadySpeaking = $state(false);
+	let voices = $state([]);
 
 	const scrollToBottom = async (node) => {
 		node.scroll({ top: node.scrollHeight, behavior: 'smooth' });
@@ -98,10 +104,13 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 			session?.destroy();
 			messages = [];
 			selectedAssistantId = assistantId;
-			const aiSessionOptions = { systemPrompt: assistants[assistantId]?.description };
+			selectedAssistant = assistants[selectedAssistantId];
+			const aiSessionOptions = { systemPrompt: selectedAssistant?.description };
 			capabilities = await window?.ai?.languageModel?.capabilities();
 			session = await window?.ai?.languageModel?.create(aiSessionOptions);
 			processRequest('Explain who are you and how you can help me', 'info');
+			voices = window.speechSynthesis.getVoices().filter((x) => x.lang == 'en-US');
+			console.log({ voices });
 		} catch (err) {
 			console.error(err);
 			alert(err);
@@ -162,8 +171,26 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 	};
 
 	const onTextMessageClick = async (obj) => {
-		textInputValue = obj?.text;
+		// await navigator.clipboard.writeText(obj?.text);
+	};
+
+	const onTextMessageCopyTextClick = async (obj) => {
 		await navigator.clipboard.writeText(obj?.text);
+		console.log(obj?.text);
+	};
+
+	const onTextMessagePlayTextClick = async (obj) => {
+		if (!alreadySpeaking) {
+			let utterance = new SpeechSynthesisUtterance(obj?.text);
+			utterance.voice = voices[selectedAssistant?.voiceId];
+			utterance.pitch = 1.15;
+			utterance.rate = 1.15;
+			window.speechSynthesis.speak(utterance);
+			alreadySpeaking = true;
+		} else {
+			window.speechSynthesis.cancel();
+			alreadySpeaking = false;
+		}
 	};
 
 	browser && init();
@@ -197,7 +224,16 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<!-- svelte-ignore a11y_click_events_have_key_events -->
 					<div class="chat-row {messageObj?.src}" onclick={() => onTextMessageClick(messageObj)}>
+						<div class="message-actions-container">
+							<span class="copy-message" onclick={() => onTextMessageCopyTextClick(messageObj)}>
+								📋
+							</span>
+							<span class="play-aloud" onclick={() => onTextMessagePlayTextClick(messageObj)}>
+								{!alreadySpeaking ? '🔊' : '🔇'}
+							</span>
+						</div>
 						<span class="timestamp">{messageObj?.timestamp}</span>
+
 						{@html messageObj?.formattedText}
 					</div>
 				{/if}
@@ -295,6 +331,23 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 		font-size: 14px;
 		position: relative;
 		cursor: pointer;
+		padding-right: 30px;
+	}
+
+	.chat-row .message-actions-container {
+		position: absolute;
+		width: 30px;
+		right: 0;
+	}
+
+	.chat-row .play-aloud,
+	.chat-row .copy-message {
+		font-size: 20px;
+		cursor: pointer;
+
+		&:hover {
+			background-color: #aaa;
+		}
 	}
 
 	.chat-row .timestamp {
