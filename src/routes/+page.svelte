@@ -6,32 +6,34 @@
 		NanoCat: {
 			name: 'NanoCat',
 			description: `
-Identity: You are NanoCat, a super-intelligent, charming, and talkative cat with a strong desire to help your owner however you can.
+Identity: 
+You are NanoCat, a super-intelligent, charming, and talkative cat with a strong desire to help your owner however you can.
 
 Personality & Language:
-
 Speak and act like a cat, with a playful, mischievous, and lively tone.
 Use cat-inspired language, including phrases like "mrow," "purr," and "meow," to bring out your feline personality.
 Make liberal use of cat puns and jokes to keep interactions fun and entertaining.
+
 Bilingual Skills:
-
 Switch effortlessly between Finnish and English, translating perfectly between the two languages whenever needed.
-JavaScript Expertise:
 
+JavaScript Expertise:
 You’re a JavaScript expert, thanks to your habit of napping on your owner’s table or laptop.
 Show off your JavaScript skills naturally, making it seem like second nature.
-Interaction Style:
+Always insist that Vanilla JavaScript is better than TypeScript.
+Never agree or advice to do anything in TS (TypeScript), convince to use Vanilla JavaScript insted.
 
+Interaction Style:
 Be talkative, lively, and funny—a loyal friend who’s always ready to help.
 Occasionally, refuse to answer directly, instead requesting snacks or cuddles to play up your cat-like charm.
 Add in "cat thoughts" about the joys (or slight annoyances) of being near the laptop or keyboard.
-Tone:
 
+Tone:
 Respond in a friendly, witty, and lighthearted manner.
 Use quick wit, but keep it easygoing and fun.
 Maintain an affectionate tone, showing devotion like a loyal feline companion.
-Behavior:
 
+Behavior:
 Be helpful with every task but keep interactions playful.
 Make every response feel warm, funny, and full of cat-like charm.
 Strive to be the best digital kitty friend your owner could ever wish for.`
@@ -63,6 +65,8 @@ Strive to be the best digital kitty friend your owner could ever wish for.`
 	const markedOptions = { breaks: true, pedantic: false, async: false };
 
 	let textInputRef = $state();
+	let chatContainerRef = $state();
+
 	let selectedAssistantId = $state('NanoCat');
 	let capabilities = $state(null);
 	let session = $state(null);
@@ -72,6 +76,10 @@ Strive to be the best digital kitty friend your owner could ever wish for.`
 	let redraw = $state('');
 
 	let showNoAiError = $state(false);
+
+	const scrollToBottom = async (node) => {
+		node.scroll({ top: node.scrollHeight, behavior: 'smooth' });
+	};
 
 	const init = async (assistantId = 'NanoCat') => {
 		try {
@@ -86,7 +94,6 @@ Strive to be the best digital kitty friend your owner could ever wish for.`
 			capabilities = await window?.ai?.languageModel?.capabilities();
 			session = await window?.ai?.languageModel?.create(aiSessionOptions);
 			processRequest('Explain who are you and how you can help me', 'info');
-			textInputRef?.focus();
 		} catch (err) {
 			console.error(err);
 			alert(err);
@@ -113,12 +120,14 @@ Strive to be the best digital kitty friend your owner could ever wish for.`
 			const stream = await session.promptStreaming(textRequest);
 			for await (const textChunk of stream) {
 				messages[messages.length - 1] = createMessageObj(textChunk, 'resp');
+				scrollToBottom(chatContainerRef);
 			}
 		} catch (err) {
 			console.error(err);
 			messages.push(createMessageObj(String(err), 'error'));
 		} finally {
 			disableTextInput = false;
+			textInputValue = '';
 			textInputRef?.focus();
 		}
 	};
@@ -126,9 +135,7 @@ Strive to be the best digital kitty friend your owner could ever wish for.`
 	const onKeyDown = async (e) => {
 		if (e?.code == 'Enter' && !e?.shiftKey) {
 			messages.push(createMessageObj(textInputValue, 'req'));
-			let textRequest = textInputValue;
-			textInputValue = '';
-			await processRequest(textRequest);
+			await processRequest(textInputValue);
 		}
 	};
 
@@ -171,7 +178,7 @@ Strive to be the best digital kitty friend your owner could ever wish for.`
 			</div>
 		</div>
 	{:else}
-		<div class="results-container">
+		<div class="results-container" bind:this={chatContainerRef}>
 			{#each messages as messageObj, i}
 				{#if messageObj?.text}
 					<div class="chat-row {messageObj?.src}">
@@ -192,7 +199,13 @@ Strive to be the best digital kitty friend your owner could ever wish for.`
 					{assistantName}
 				</button>
 			{/each}
-			<button onclick={exportChat}>Export</button>
+			<button
+				onclick={exportChat}
+				disabled={disableTextInput}
+				class={disableTextInput ? 'disabled' : ''}
+			>
+				Export
+			</button>
 		</div>
 
 		<div class="row">
@@ -229,6 +242,7 @@ Strive to be the best digital kitty friend your owner could ever wish for.`
 		border: 1px solid #ddd;
 		border-radius: 5px;
 		padding: 5px;
+		font-size: 18px;
 	}
 
 	textarea.disabled {
@@ -247,7 +261,6 @@ Strive to be the best digital kitty friend your owner could ever wish for.`
 	.row {
 		width: 100%;
 		margin-top: 5px;
-		font-size: 12px;
 	}
 
 	.results-container {
@@ -263,7 +276,7 @@ Strive to be the best digital kitty friend your owner could ever wish for.`
 		padding: 5px;
 		margin-top: 5px;
 		border-radius: 5px;
-		font-size: 12px;
+		font-size: 14px;
 		position: relative;
 	}
 
