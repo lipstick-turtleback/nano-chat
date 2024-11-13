@@ -108,7 +108,7 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 			const aiSessionOptions = { systemPrompt: selectedAssistant?.description };
 			capabilities = await window?.ai?.languageModel?.capabilities();
 			session = await window?.ai?.languageModel?.create(aiSessionOptions);
-			processRequest('Explain who are you and how you can help me', 'info');
+			processRequest('Greet me, explain who you are, what you can do, 3-4 sentences max.', 'info');
 			voices = window.speechSynthesis.getVoices().filter((x) => x.lang == 'en-US');
 			console.log({ voices });
 		} catch (err) {
@@ -332,6 +332,27 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 		position: relative;
 		cursor: pointer;
 		padding-right: 30px;
+	}
+
+	.chat-row span {
+		animation: fadeInFromNone 1s ease-out;
+	}
+
+	@keyframes fadeInFromNone {
+		0% {
+			display: none;
+			opacity: 0;
+		}
+
+		1% {
+			display: block;
+			opacity: 0;
+		}
+
+		100% {
+			display: block;
+			opacity: 1;
+		}
 	}
 
 	.chat-row .message-actions-container {
