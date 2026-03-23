@@ -2,6 +2,17 @@
 	import { browser } from '$app/environment';
 	import { marked } from 'marked';
 
+	/** @type {typeof import('dompurify')} */
+	let dompurifyModule;
+	let sanitizer = $state(null);
+
+	$effect(() => {
+		if (browser && window.DOMPurify) {
+			dompurifyModule = window.DOMPurify;
+			sanitizer = dompurifyModule(window);
+		}
+	});
+
 	const assistants = {
 		NanoCat: {
 			name: 'NanoCat',
@@ -74,14 +85,13 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 		}
 	};
 
-	const markedOptions = { breaks: true, pedantic: false, async: false };
+	const markedOptions = { breaks: true, async: false };
 
 	let textInputRef = $state();
 	let chatContainerRef = $state();
 
 	let selectedAssistantId = $state('NanoCat');
 	let selectedAssistant = $state(null);
-	let capabilities = $state(null);
 	let session = $state(null);
 	let messages = $state([]);
 	let textInputValue = $state('');
@@ -106,11 +116,10 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 			selectedAssistantId = assistantId;
 			selectedAssistant = assistants[selectedAssistantId];
 			const aiSessionOptions = { systemPrompt: selectedAssistant?.description };
-			capabilities = await window?.ai?.languageModel?.capabilities();
+			await window?.ai?.languageModel?.capabilities();
 			session = await window?.ai?.languageModel?.create(aiSessionOptions);
 			processRequest('Greet me, explain who you are, what you can do, 3-4 sentences max.', 'info');
 			voices = window.speechSynthesis.getVoices().filter((x) => x.lang == 'en-US');
-			console.log({ voices });
 		} catch (err) {
 			console.error(err);
 			alert(err);
@@ -119,11 +128,12 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 
 	const createMessageObj = (text, srcType = 'resp') => {
 		const mdHtml = marked.parse(text, markedOptions);
+		const sanitizedHtml = sanitizer ? sanitizer.sanitize(mdHtml) : mdHtml;
 
 		const result = {
 			src: srcType,
 			text: text,
-			formattedText: mdHtml,
+			formattedText: sanitizedHtml,
 			timestamp: new Date().toLocaleTimeString()
 		};
 
@@ -156,8 +166,8 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 		}
 	};
 
-	const resetChat = async (assitantId = 'NanoCat') => {
-		init(assitantId);
+	const resetChat = async (assistantId = 'NanoCat') => {
+		init(assistantId);
 	};
 
 	const exportChat = async () => {
@@ -170,13 +180,14 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 		console.log(exportResult);
 	};
 
-	const onTextMessageClick = async (obj) => {
-		// await navigator.clipboard.writeText(obj?.text);
-	};
+	const onTextMessageClick = async () => {};
 
-	const onTextMessageCopyTextClick = async (obj) => {
-		await navigator.clipboard.writeText(obj?.text);
-		console.log(obj?.text);
+	const onTextMessageCopyTextClick = async (text) => {
+		try {
+			await navigator.clipboard.writeText(text);
+		} catch (err) {
+			console.error('Failed to copy:', err);
+		}
 	};
 
 	const onTextMessagePlayTextClick = async (obj) => {
@@ -219,16 +230,28 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 		</div>
 	{:else}
 		<div class="results-container" bind:this={chatContainerRef}>
-			{#each messages as messageObj, i}
+			{#each messages as messageObj, _idx}
 				{#if messageObj?.text}
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<!-- svelte-ignore a11y_click_events_have_key_events -->
 					<div class="chat-row {messageObj?.src}" onclick={() => onTextMessageClick(messageObj)}>
 						<div class="message-actions-container">
-							<span class="copy-message" onclick={() => onTextMessageCopyTextClick(messageObj)}>
+							<span
+								class="copy-message"
+								onclick={(e) => {
+									e.stopPropagation();
+									onTextMessageCopyTextClick(messageObj);
+								}}
+							>
 								📋
 							</span>
-							<span class="play-aloud" onclick={() => onTextMessagePlayTextClick(messageObj)}>
+							<span
+								class="play-aloud"
+								onclick={(e) => {
+									e.stopPropagation();
+									onTextMessagePlayTextClick(messageObj);
+								}}
+							>
 								{!alreadySpeaking ? '🔊' : '🔇'}
 							</span>
 						</div>

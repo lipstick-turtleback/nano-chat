@@ -1,0 +1,19 @@
+{
+	"$schema": "https://opencode.ai/config.json",
+	"provider": {
+		"lmstudio (rtx)": {
+			"npm": "@ai-sdk/openai-compatible",
+			"name": "LM Studio (rtx)",
+			"options": {
+				"timeout": 6000000,
+				"chunkTimeout": 6000000,
+				"baseURL": "http://192.168.68.57:1234/v1"
+			},
+			"models": {
+				"qwen3.5-35b-a3b": {
+					"name": "qwen3.5-35b-a3b (rtx)"
+				}
+			}
+		}
+	}
+}
