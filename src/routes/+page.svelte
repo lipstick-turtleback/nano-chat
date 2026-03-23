@@ -230,7 +230,7 @@ Lastly, you maintain an unwavering standard of confidentiality, guaranteeing eac
 		</div>
 	{:else}
 		<div class="results-container" bind:this={chatContainerRef}>
-			{#each messages as messageObj, _idx}
+			{#each messages as messageObj}
 				{#if messageObj?.text}
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<!-- svelte-ignore a11y_click_events_have_key_events -->

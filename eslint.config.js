@@ -17,8 +17,7 @@ export default [
 			}
 		},
 		rules: {
-			'svelte/no-at-html-tags': 'off',
-			'no-unused-vars': ['warn', { varsIgnorePattern: '^_' }]
+			'svelte/no-at-html-tags': 'off'
 		}
 	},
 	{
