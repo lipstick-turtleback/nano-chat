@@ -4,9 +4,7 @@ test('app loads and shows chat interface', async ({ page }) => {
   await page.goto('/');
 
   // Should have the app layout
-  await expect(
-    page.getByRole('heading', { level: 2, name: /companions/i })
-  ).toBeVisible({
+  await expect(page.getByRole('heading', { level: 2, name: /companions/i })).toBeVisible({
     timeout: 10000
   });
 });
@@ -46,7 +44,10 @@ test('selecting a different companion switches context', async ({ page }) => {
   await page.locator('.sidebar').waitFor({ state: 'visible', timeout: 10000 });
 
   // Click on NanoCat
-  await page.getByRole('button', { name: /nanocat/i }).first().click();
+  await page
+    .getByRole('button', { name: /nanocat/i })
+    .first()
+    .click();
 
   // The chat should reset and reinitialize
   await expect(page.getByText('NanoCat')).toBeVisible();

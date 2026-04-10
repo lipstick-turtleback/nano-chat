@@ -1,0 +1,47 @@
+// Design Tokens
+:root {
+  // Dynamic accent (updated per companion)
+  --accent: #7c3aed;
+  --accent-bg: #f5f3ff;
+  --accent-border: #ddd6fe;
+  --gradient: linear-gradient(135deg, #7c3aed, #a78bfa);
+
+  // Neutrals
+  --bg-primary: #fafafa;
+  --bg-surface: #ffffff;
+  --bg-sidebar: #f9fafb;
+  --bg-hover: #f3f4f6;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --text-tertiary: #9ca3af;
+  --text-inverse: #ffffff;
+  --border-light: #e5e7eb;
+  --border-medium: #d1d5db;
+
+  // Semantic
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --error-bg: #fef2f2;
+  --error-border: #fecaca;
+
+  // Layout
+  --sidebar-width: 280px;
+  --header-height: 56px;
+
+  // Radii
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  // Shadows
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08);
+
+  // Transitions
+  --ease-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}

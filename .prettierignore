@@ -1,0 +1,15 @@
+# Package Managers
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+# Build output
+dist/
+coverage/
+playwright-report/
+test-results/
+# IDE
+.qwen/
+.vscode/
+.idea/
+# Dependencies
+node_modules/
