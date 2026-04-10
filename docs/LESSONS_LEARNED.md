@@ -196,3 +196,28 @@
 **Rule:** Security-sensitive lint rules should be errors, not warnings.
 
 ---
+
+## 2026-04-10 — Visual Redesign (Dark Premium Theme)
+
+### Dark Theme Requires Complete Token Rebuild
+
+**Context:** The light theme used standard Tailwind utilities inline. The new dark theme needed custom CSS variables for every surface, text level, and border.
+**What happened:** Mixing Tailwind utility classes (`bg-gray-900`, `text-white`) with SCSS variables created inconsistent contrast. Some elements were invisible on dark backgrounds.
+**Fix:** Removed all Tailwind utility classes from JSX. All styling now goes through SCSS with CSS custom properties. Every color reference uses `var(--*)`.
+**Rule:** Pick one styling system per project. Mixing utilities with design tokens creates maintenance nightmares.
+
+### Ollama Should Be the Default Provider
+
+**Context:** Chrome AI was the default, but most users don't have Chrome 131+ with Gemini Nano enabled.
+**What happened:** New users saw the error screen immediately and couldn't use the app.
+**Fix:** Changed `provider: 'ollama'` as default. Chrome AI is now the opt-in alternative.
+**Rule:** Default to the most accessible option. Progressive enhancement, not progressive degradation.
+
+### Tailwind Was Doing Nothing For Us
+
+**Context:** Tailwind was installed and configured but every style was in SCSS. The `tailwind.config.js` had empty `extend` and no plugins.
+**What happened:** Tailwind was adding ~11KB of CSS (base reset + utilities we never used) on top of our 18KB SCSS.
+**Fix:** Kept Tailwind for now (removing it risks breaking any accidental class usage) but all new styles are pure SCSS.
+**Rule:** If you have a design token system in SCSS, you don't need Tailwind. Pick one.
+
+---

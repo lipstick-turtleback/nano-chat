@@ -24,8 +24,7 @@ function ChatArea({
             {assistant?.emoji || '💬'}
           </span>
           <p className="empty-chat-text">
-            Start a conversation with{' '}
-            <strong>{assistant?.shortName || 'your companion'}</strong>
+            Start a conversation with <strong>{assistant?.shortName || 'your companion'}</strong>
           </p>
         </div>
       )}

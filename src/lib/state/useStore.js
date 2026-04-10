@@ -48,7 +48,7 @@ function debouncedScrollToBottom() {
 
 export const useStore = create((set, get) => ({
   // Provider
-  provider: 'chrome',
+  provider: 'ollama',
   session: null,
   ollamaModels: [],
   selectedOllamaModel: DEFAULT_OLLAMA_MODEL,

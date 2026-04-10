@@ -7,17 +7,17 @@ function ChatHeader({ provider, ollamaConnected, selectedOllamaModel, downloadPr
         : 'Chrome AI · Gemini Nano';
 
   return (
-    <header className="chat-header relative">
-      <div className="flex items-center gap-2">
+    <header className="chat-header">
+      <div className="header-status">
         <span
           className={`status-dot ${provider === 'ollama' && !ollamaConnected ? 'disconnected' : 'connected'}`}
         />
-        <span className="text-sm text-gray-500">{providerLabel}</span>
+        <span className="header-label">{providerLabel}</span>
       </div>
       {downloadProgress !== null && (
-        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-100">
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-800">
           <div
-            className="h-full bg-gradient-to-r from-violet-500 to-violet-400 transition-all duration-300"
+            className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400 transition-all duration-300"
             style={{ width: `${downloadProgress}%` }}
           />
         </div>

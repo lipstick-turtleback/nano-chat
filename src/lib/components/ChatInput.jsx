@@ -32,7 +32,7 @@ function ChatInput({
         />
         <div className="chat-input-actions">
           <span
-            className={`char-count ${isOverLimit ? 'text-red-500' : ''}`}
+            className={`char-count ${isOverLimit ? 'over-limit' : ''}`}
             aria-label={`${value.length} characters`}
           >
             {value.length}
@@ -45,15 +45,15 @@ function ChatInput({
               aria-label="Cancel request"
             >
               <svg
-                width="18"
-                height="18"
+                width="16"
+                height="16"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="2"
+                strokeWidth="2.5"
                 aria-hidden="true"
               >
-                <rect x="6" y="6" width="12" height="12" rx="2" />
+                <rect x="6" y="6" width="12" height="12" rx="3" />
               </svg>
             </button>
           ) : (
@@ -65,8 +65,8 @@ function ChatInput({
               aria-label="Send message"
             >
               <svg
-                width="18"
-                height="18"
+                width="16"
+                height="16"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"

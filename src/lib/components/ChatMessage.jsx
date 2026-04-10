@@ -16,17 +16,9 @@ function ChatMessage({
   const isError = message.src === 'error';
   const isProcessing = message.text === 'processing...';
 
-  const bubbleClass = isUser
-    ? 'user-bubble'
-    : isError
-      ? 'error-bubble'
-      : 'assistant-bubble';
+  const bubbleClass = isUser ? 'user-bubble' : isError ? 'error-bubble' : 'assistant-bubble';
 
-  const wrapperClass = isUser
-    ? 'user'
-    : isError || isProcessing
-      ? 'error'
-      : 'assistant';
+  const wrapperClass = isUser ? 'user' : isError || isProcessing ? 'error' : 'assistant';
 
   const avatar = isUser ? '👤' : isError ? '⚠️' : assistant?.emoji || '🤖';
   const senderName = isError ? 'Error' : assistant?.name || 'Assistant';

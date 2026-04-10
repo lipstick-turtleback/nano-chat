@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { ASSISTANTS, MAX_INPUT_LENGTH } from './lib/utils/constants';
 import { useStore } from './lib/state/useStore';
 import Sidebar from './lib/components/Sidebar';
@@ -39,8 +39,6 @@ function App() {
     dismissError,
     initTTS
   } = useStore();
-
-  const inputRef = useRef(null);
 
   useEffect(() => {
     init();
@@ -92,9 +90,7 @@ function App() {
           downloadProgress={modelDownloadProgress}
         />
 
-        {runtimeError && (
-          <RuntimeErrorBanner message={runtimeError} onDismiss={dismissError} />
-        )}
+        {runtimeError && <RuntimeErrorBanner message={runtimeError} onDismiss={dismissError} />}
 
         <ChatArea
           messages={messages}
@@ -113,7 +109,6 @@ function App() {
           onKeyDown={handleKeyDown}
           onSend={handleSend}
           onCancel={cancelRequest}
-          inputRef={inputRef}
           isProcessing={isProcessing}
           maxInputLength={MAX_INPUT_LENGTH}
         />

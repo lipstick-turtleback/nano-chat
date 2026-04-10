@@ -1,12 +1,12 @@
 function ErrorScreen() {
   return (
-    <div className="error-page">
+    <div className="error-screen">
       <div className="error-content">
         <div className="error-icon">🧠</div>
         <h1>No AI Provider Available</h1>
+        <p>This app needs either Chrome 131+ with Gemini Nano or a local Ollama instance.</p>
         <p>
-          This app needs either Chrome 131+ with Gemini Nano or a local Ollama
-          instance.
+          Try starting Ollama: <code>ollama serve</code>
         </p>
         <div className="error-links">
           <a
