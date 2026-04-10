@@ -14,6 +14,7 @@ function App() {
     selectedAssistantId,
     messages,
     textInputValue,
+    isInitializing,
     isProcessing,
     showNoAiError,
     runtimeError,
@@ -37,7 +38,8 @@ function App() {
     setSelectedOllamaModel,
     refreshOllamaModels,
     dismissError,
-    initTTS
+    initTTS,
+    handleToolSubmit
   } = useStore();
 
   useEffect(() => {
@@ -59,6 +61,7 @@ function App() {
   };
 
   const assistant = ASSISTANTS[selectedAssistantId];
+  const isBusy = isInitializing || isProcessing;
 
   if (showNoAiError) {
     return <ErrorScreen />;
@@ -69,7 +72,7 @@ function App() {
       <Sidebar
         selectedAssistantId={selectedAssistantId}
         onSelect={selectCompanion}
-        disabled={isProcessing}
+        disabled={isBusy}
         provider={provider}
         onProviderChange={switchProvider}
         ollamaConnected={ollamaConnected}
@@ -101,6 +104,7 @@ function App() {
           isTTSLoading={isTTSLoading}
           lastCopiedId={lastCopiedId}
           kokoroReady={kokoroReady}
+          onToolSubmit={handleToolSubmit}
         />
 
         <ChatInput

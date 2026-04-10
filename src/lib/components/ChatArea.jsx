@@ -8,7 +8,8 @@ function ChatArea({
   isSpeaking,
   isTTSLoading,
   lastCopiedId,
-  kokoroReady
+  kokoroReady,
+  onToolSubmit
 }) {
   return (
     <div
@@ -40,6 +41,7 @@ function ChatArea({
           isTTSLoading={isTTSLoading}
           lastCopiedId={lastCopiedId}
           kokoroReady={kokoroReady}
+          onToolSubmit={onToolSubmit}
         />
       ))}
     </div>

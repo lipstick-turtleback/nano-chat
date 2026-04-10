@@ -1,13 +1,4 @@
-function ChatInput({
-  value,
-  onChange,
-  onKeyDown,
-  onSend,
-  onCancel,
-  inputRef,
-  isProcessing,
-  maxInputLength
-}) {
+function ChatInput({ value, onChange, onKeyDown, onSend, onCancel, isProcessing, maxInputLength }) {
   const hasText = value.trim().length > 0;
   const isOverLimit = value.length > maxInputLength;
 
@@ -16,7 +7,6 @@ function ChatInput({
       <div className="chat-input-wrapper">
         <textarea
           id="chat-input"
-          ref={inputRef}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={onKeyDown}

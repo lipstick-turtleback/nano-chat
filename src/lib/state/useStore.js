@@ -63,6 +63,7 @@ export const useStore = create((set, get) => ({
 
   // UI
   textInputValue: '',
+  isInitializing: true,
   isProcessing: false,
   showNoAiError: false,
   runtimeError: null,
@@ -92,7 +93,8 @@ export const useStore = create((set, get) => ({
       runtimeError: null,
       showNoAiError: false,
       modelDownloadProgress: null,
-      isSpeaking: false
+      isSpeaking: false,
+      isInitializing: true
     });
 
     // Apply theme
@@ -123,7 +125,7 @@ export const useStore = create((set, get) => ({
           onProgress: progressCb
         });
 
-        set({ session, modelDownloadProgress: null });
+        set({ session, modelDownloadProgress: null, isInitializing: false });
 
         if (availability === 'available') {
           get().sendMessage(GREETING_PROMPT);
@@ -135,15 +137,15 @@ export const useStore = create((set, get) => ({
             systemPrompt: assistant.description,
             model: get().selectedOllamaModel
           });
-          set({ session, ollamaConnected: true });
+          set({ session, ollamaConnected: true, isInitializing: false });
           get().sendMessage(GREETING_PROMPT);
         } else {
-          set({ ollamaConnected: false, isProcessing: false });
+          set({ ollamaConnected: false, isProcessing: false, isInitializing: false });
         }
       }
     } catch (err) {
       console.error(err);
-      set({ runtimeError: String(err), isProcessing: false });
+      set({ runtimeError: String(err), isProcessing: false, isInitializing: false });
     }
   },
 
@@ -359,6 +361,31 @@ export const useStore = create((set, get) => ({
   setTextInputValue: (v) => set({ textInputValue: v }),
   setSelectedOllamaModel: (m) => set({ selectedOllamaModel: m }),
   dismissError: () => set({ runtimeError: null }),
+
+  // Handle interactive tool submission (quiz answer, etc.)
+  handleToolSubmit: (messageId, tool, result) => {
+    // Log result for future knowledge compression
+    const feedback =
+      result.isCorrect !== undefined
+        ? result.isCorrect
+          ? '🎉 Correct!'
+          : `Not quite. ${tool.content?.explanation || ''}`
+        : `You got ${result.correctCount || 0}/${result.total || tool.content?.pairs?.length || '?'} right!`;
+
+    // Append a subtle system note to the message for context
+    set((prev) => {
+      const updated = prev.messages.map((m) => {
+        if (m.id === messageId) {
+          return {
+            ...m,
+            toolResult: { tool, result, feedback }
+          };
+        }
+        return m;
+      });
+      return { messages: updated };
+    });
+  },
 
   _scrollToBottom: () => {
     const el = document.getElementById('chat-container');
