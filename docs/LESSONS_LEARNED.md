@@ -221,3 +221,71 @@
 **Rule:** If you have a design token system in SCSS, you don't need Tailwind. Pick one.
 
 ---
+
+## 2026-04-10 — Interactive Tools & Knowledge
+
+### React Hooks Must Always Be Called in Same Order
+
+**Context:** ChatMessage had `useMemo` after an early `return null` for empty messages.
+**What happened:** ESLint's `react-hooks/rules-of-hooks` caught it — but if it hadn't, React would crash with confusing errors when a message had no text.
+**Fix:** Moved `useMemo` before the early return. Used `message?.text` in the dependency to handle null safely.
+**Rule:** ALL hooks must be called unconditionally at the top of the component. Never after early returns.
+
+### Interactive Tool Cards Need Proper State Management
+
+**Context:** Quiz answers, T/F results, and word matching all need local component state.
+**What happened:** Each card type (`QuizCard`, `TrueFalseCard`, `FillBlankCard`, `WordMatchCard`) needs its own state for selected answers, submission status, and results display.
+**Fix:** Each card manages its own state internally. Results are reported back to the store via `onToolSubmit` callback for knowledge tracking.
+**Rule:** Interactive tools are self-contained. The chat message just detects JSON and renders the right card.
+
+### LLM-Generated JSON Needs Defensive Parsing
+
+**Context:** Tool JSON from the LLM may be wrapped in markdown code blocks, have extra text, or be malformed.
+**What happened:** `extractTool()` needs to handle ` ```json {...} ``` `, plain JSON, and partial failures gracefully.
+**Fix:** Regex to find JSON object with `"tool"` key, then try-parse with and without code block markers. Return null on failure.
+**Rule:** Never trust LLM output to be clean JSON. Always parse defensively with fallbacks.
+
+### Knowledge Compression Should Be Invisible
+
+**Context:** The system needs to "remember" things about the user without showing the memory process in chat.
+**What happened:** Knowledge is compressed every 5 messages via a hidden LLM call. The results go to localStorage, not the chat.
+**Fix:** `knowledgeService` operates silently. The system prompt is augmented with known context — the companion naturally remembers without ever mentioning it has notes.
+**Rule:** Memory should feel magical, not creepy. The companion just "knows" — never reveals the mechanism.
+
+### isInitializing Prevents Race Conditions on First Load
+
+**Context:** Without `isInitializing`, the sidebar was enabled before the session was ready. Users could switch companions mid-initialization.
+**What happened:** Rapid companion clicks during init caused multiple concurrent session creations and orphaned async flows.
+**Fix:** `isInitializing: true` at start of `selectCompanion`, set to `false` only after session is created (or fails).
+**Rule:** Gate all interactive controls behind a single `isBusy` flag. Users can't break what they can't click.
+
+### Challenge Cache Prevents Redundant API Calls
+
+**Context:** The same theme combination (e.g., "lemonade+penguin+economy") would trigger a new LLM call every time.
+**What happened:** Cache key uses sorted themes so `['a','b','c']` and `['c','a','b']` hit the same entry. Max 200 items with LRU pruning.
+**Fix:** `getCachedChallenge()` checks before LLM call. `cacheChallenge()` stores with timestamp. Prune oldest on overflow.
+**Rule:** Cache expensive LLM calls. Same input = same output. Sort inputs for cache key stability.
+
+---
+
+## 2026-04-10 — Streaming Fix + Companion Expansion
+
+### Streaming Text Caused Flashing/Re-rendering Every Word
+**Context:** Every streaming chunk called `createMessageObj(chunk)` which re-ran `marked.parse()` + `DOMPurify.sanitize()` on the FULL cumulative text.
+**What happened:** The entire HTML was replaced on every word -- causing visible flickering, layout shifts, and wasted CPU on markdown parsing 50+ times per second.
+**Fix:** During streaming, update only `message.text` (no markdown). Show plain text with blinking cursor. After stream completes, call `finalizeMessage()` which renders markdown ONCE.
+**Rule:** Never re-parse/re-render during a tight streaming loop. Update raw state during streaming, render once at the end.
+
+### Chrome promptStreaming Returns Cumulative Text
+**Context:** Chrome's `session.promptStreaming()` returns the FULL response so far on each chunk -- not just the new tokens.
+**What happened:** Both Chrome and Ollama yield cumulative text. Each chunk replaces the previous display, not appended to it.
+**Fix:** `updateMessageText()` sets `text` directly. No concatenation needed. After stream: `finalizeMessage()` renders markdown once.
+**Rule:** Always verify chunk behavior per provider. Both Chrome and Ollama return cumulative full text in each chunk.
+
+### 10 Companions with Unique Personalities
+**Context:** Started with 5 companions. Users want genuine variety in expertise areas and teaching styles.
+**What happened:** Added Atlas (career strategy), Luna (writing/storytelling), Zen (coding), Hera (leadership) -- each with unique personality, mood, charisma, goals, and teaching style.
+**Fix:** Each companion has: id, name, shortName, tagline, emoji, color, colorBg, gradient, detailed system prompt, category, voiceStyle.
+**Rule:** Companions must feel genuinely different -- not just reskinned versions of the same AI. Different expertise, different teaching style, different personality.
+
+---

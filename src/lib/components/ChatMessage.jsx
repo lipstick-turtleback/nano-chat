@@ -84,12 +84,16 @@ function ChatMessage({
           </div>
         ) : (
           <>
-            {displayText && displayText !== 'processing...' && (
-              <div
-                className="message-content"
-                dangerouslySetInnerHTML={{ __html: message.formattedText }}
-              />
-            )}
+            {displayText &&
+              displayText !== 'processing...' &&
+              (message.isStreaming ? (
+                <div className="message-content streaming-text">{displayText}</div>
+              ) : (
+                <div
+                  className="message-content"
+                  dangerouslySetInnerHTML={{ __html: message.formattedText }}
+                />
+              ))}
             {tool && (
               <ToolRenderer
                 tool={tool}

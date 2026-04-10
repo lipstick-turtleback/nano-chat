@@ -21,9 +21,26 @@ function createMessageObj(text, srcType = 'resp') {
     id: nextId(),
     src: srcType,
     text,
-    formattedText: renderMarkdown(text),
-    timestamp: new Date().toLocaleTimeString()
+    formattedText: text === 'processing...' ? '' : renderMarkdown(text),
+    timestamp: new Date().toLocaleTimeString(),
+    isStreaming: false
   };
+}
+
+// During streaming, update only the raw text.
+// Markdown is NOT re-parsed until the stream completes.
+function updateMessageText(prev, index, text) {
+  const updated = [...prev.messages];
+  updated[index] = { ...updated[index], text, isStreaming: true };
+  return { messages: updated };
+}
+
+// Finalize a streaming message — render markdown once
+function finalizeMessage(prev, index) {
+  const updated = [...prev.messages];
+  const msg = updated[index];
+  updated[index] = { ...msg, formattedText: renderMarkdown(msg.text), isStreaming: false };
+  return { messages: updated };
 }
 
 function buildHistory(messages) {
@@ -223,24 +240,20 @@ export const useStore = create((set, get) => ({
         });
 
         for await (const chunk of stream) {
-          set((prev) => {
-            const updated = [...prev.messages];
-            updated[updated.length - 1] = createMessageObj(chunk, 'resp');
-            return { messages: updated };
-          });
+          set((prev) => updateMessageText(prev, prev.messages.length - 1, chunk));
           debouncedScrollToBottom();
         }
+        // Stream complete — render markdown once
+        set((prev) => finalizeMessage(prev, prev.messages.length - 1));
       } else {
         // Chrome: session already has system prompt via initialPrompts
         const stream = session.promptStreaming(text);
         for await (const chunk of stream) {
-          set((prev) => {
-            const updated = [...prev.messages];
-            updated[updated.length - 1] = createMessageObj(chunk, 'resp');
-            return { messages: updated };
-          });
+          set((prev) => updateMessageText(prev, prev.messages.length - 1, chunk));
           debouncedScrollToBottom();
         }
+        // Stream complete — render markdown once
+        set((prev) => finalizeMessage(prev, prev.messages.length - 1));
       }
     } catch (err) {
       if (err.name === 'AbortError') return;
