@@ -11,8 +11,10 @@ import {
 import { renderMarkdown } from '../utils/markdown';
 import { speak, stopSpeaking, initTTS, isTTSReady } from '../services/ttsService';
 
-let messageId = 0;
-const nextId = () => `msg-${++messageId}-${Date.now()}`;
+const nextId = () =>
+  typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 function createMessageObj(text, srcType = 'resp') {
   return {
@@ -31,6 +33,17 @@ function buildHistory(messages) {
       role: m.src === 'req' ? 'user' : 'assistant',
       content: m.text
     }));
+}
+
+// Scroll debounce — prevents layout thrashing during streaming
+let scrollTimeout = null;
+function debouncedScrollToBottom() {
+  if (scrollTimeout) return;
+  scrollTimeout = setTimeout(() => {
+    scrollTimeout = null;
+    const el = document.getElementById('chat-container');
+    el?.scroll({ top: el.scrollHeight, behavior: 'smooth' });
+  }, 80);
 }
 
 export const useStore = create((set, get) => ({
@@ -53,9 +66,11 @@ export const useStore = create((set, get) => ({
   isProcessing: false,
   showNoAiError: false,
   runtimeError: null,
+  lastCopiedId: null,
 
   // TTS
   isSpeaking: false,
+  isTTSLoading: false,
   kokoroReady: false,
 
   // Abort
@@ -76,7 +91,8 @@ export const useStore = create((set, get) => ({
       messages: [],
       runtimeError: null,
       showNoAiError: false,
-      modelDownloadProgress: null
+      modelDownloadProgress: null,
+      isSpeaking: false
     });
 
     // Apply theme
@@ -171,7 +187,8 @@ export const useStore = create((set, get) => ({
       messages: [...state.messages, userMsg],
       isProcessing: true,
       textInputValue: '',
-      runtimeError: null
+      runtimeError: null,
+      lastCopiedId: null
     });
 
     // Add processing placeholder
@@ -194,8 +211,8 @@ export const useStore = create((set, get) => ({
 
     try {
       if (prov === 'ollama') {
-        // For Ollama, build full conversation history including system prompt
-        const allMessages = [...get().messages.slice(0, -1), userMsg];
+        // Build conversation history from all messages except the processing placeholder
+        const allMessages = get().messages.slice(0, -1);
         const history = buildHistory(allMessages);
         const stream = session.promptStreaming(text, {
           model: selectedOllamaModel,
@@ -209,7 +226,7 @@ export const useStore = create((set, get) => ({
             updated[updated.length - 1] = createMessageObj(chunk, 'resp');
             return { messages: updated };
           });
-          get()._scrollToBottom();
+          debouncedScrollToBottom();
         }
       } else {
         // Chrome: session already has system prompt via initialPrompts
@@ -220,7 +237,7 @@ export const useStore = create((set, get) => ({
             updated[updated.length - 1] = createMessageObj(chunk, 'resp');
             return { messages: updated };
           });
-          get()._scrollToBottom();
+          debouncedScrollToBottom();
         }
       }
     } catch (err) {
@@ -244,7 +261,7 @@ export const useStore = create((set, get) => ({
 
   cancelRequest: () => {
     get().abortController?.abort();
-    set({ isProcessing: false, abortController: null, textInputValue: '' });
+    set({ isProcessing: false, abortController: null });
     setTimeout(() => {
       document.getElementById('chat-input')?.focus();
     }, FOCUS_TIMEOUT);
@@ -274,13 +291,17 @@ export const useStore = create((set, get) => ({
 
     const assistant = ASSISTANTS[selectedAssistantId];
     try {
-      if (!isTTSReady()) await initTTS();
+      if (!isTTSReady()) {
+        set({ isTTSLoading: true });
+        await initTTS();
+        set({ isTTSLoading: false, kokoroReady: true });
+      }
       set({ isSpeaking: true });
       await speak(text, assistant?.voiceStyle || 'default');
       set({ isSpeaking: false });
     } catch (err) {
       console.error('TTS error:', err);
-      set({ isSpeaking: false });
+      set({ isSpeaking: false, isTTSLoading: false });
     }
   },
 
@@ -298,27 +319,41 @@ export const useStore = create((set, get) => ({
     }
   },
 
-  copyMessage: async (text) => {
+  copyMessage: async (text, messageId) => {
     try {
       await navigator.clipboard.writeText(text);
+      set({ lastCopiedId: messageId });
+      // Reset copy state after 2 seconds
+      setTimeout(() => {
+        set({ lastCopiedId: null });
+      }, 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
     }
   },
 
   exportChat: () => {
-    const { messages } = get();
-    let result = '';
-    messages.forEach((m) => {
-      result += `[${m.timestamp}, ${m.src}]\n${m.text}\n\n`;
-    });
-    const blob = new Blob([result], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `lexichat-export-${new Date().toISOString().slice(0, 10)}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const { messages } = get();
+      if (messages.length === 0) return;
+
+      let result = '';
+      messages.forEach((m) => {
+        result += `[${m.timestamp}, ${m.src}]\n${m.text}\n\n`;
+      });
+      const blob = new Blob([result], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `lexichat-export-${new Date().toISOString().slice(0, 10)}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export failed:', err);
+      set({ runtimeError: 'Failed to export chat. Please try again.' });
+    }
   },
 
   setTextInputValue: (v) => set({ textInputValue: v }),

@@ -54,7 +54,7 @@
         "noSvgWithoutTitle": "off"
       },
       "security": {
-        "noDangerouslySetInnerHtml": "warn"
+        "noDangerouslySetInnerHtml": "error"
       }
     }
   },

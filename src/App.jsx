@@ -12,6 +12,8 @@ function App() {
     showNoAiError,
     runtimeError,
     isSpeaking,
+    isTTSLoading,
+    lastCopiedId,
     kokoroReady,
     ollamaConnected,
     ollamaModels,
@@ -194,7 +196,7 @@ function App() {
       {/* Main */}
       <main className="main-chat">
         {/* Header */}
-        <header className="chat-header">
+        <header className="chat-header relative">
           <div className="flex items-center gap-2">
             <span
               className={`status-dot ${provider === 'ollama' && !ollamaConnected ? 'disconnected' : 'connected'}`}
@@ -219,7 +221,7 @@ function App() {
 
         {/* Error Banner */}
         {runtimeError && (
-          <div className="runtime-error-banner">
+          <div className="runtime-error-banner" role="status" aria-live="polite">
             <span>{runtimeError}</span>
             <button
               type="button"
@@ -292,19 +294,28 @@ function App() {
                       <button
                         type="button"
                         className="action-btn"
-                        aria-label="Copy message"
-                        onClick={() => copyMessage(msg.text)}
+                        aria-label={lastCopiedId === msg.id ? 'Copied!' : 'Copy message'}
+                        onClick={() => copyMessage(msg.text, msg.id)}
+                        title={lastCopiedId === msg.id ? 'Copied!' : 'Copy to clipboard'}
                       >
-                        📋
+                        {lastCopiedId === msg.id ? '✅' : '📋'}
                       </button>
                       {kokoroReady && (
                         <button
                           type="button"
                           className="action-btn"
-                          aria-label={isSpeaking ? 'Stop playing' : 'Play message'}
+                          aria-label={
+                            isSpeaking
+                              ? 'Stop playing'
+                              : isTTSLoading
+                                ? 'Loading speech...'
+                                : 'Play message'
+                          }
                           onClick={() => speakMessage(msg.text)}
+                          disabled={isTTSLoading}
+                          title={isTTSLoading ? 'Loading speech model...' : 'Play via TTS'}
                         >
-                          {isSpeaking ? '🔇' : '🔊'}
+                          {isTTSLoading ? '⏳' : isSpeaking ? '🔇' : '🔊'}
                         </button>
                       )}
                     </div>
@@ -323,11 +334,15 @@ function App() {
               value={textInputValue}
               onChange={(e) => setTextInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type your message... Enter to send, Shift+Enter for new line."
+              placeholder={
+                isProcessing
+                  ? 'Waiting for response...'
+                  : 'Type your message... Enter to send, Shift+Enter for new line.'
+              }
               className="chat-input"
               rows={1}
               aria-label="Chat message input"
-              disabled={false}
+              disabled={isProcessing}
             />
             <div className="chat-input-actions">
               <span className="char-count">{textInputValue.length}</span>

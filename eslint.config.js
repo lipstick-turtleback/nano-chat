@@ -29,6 +29,8 @@ export default [
         it: 'readonly',
         expect: 'readonly',
         beforeAll: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
         test: 'readonly'
       },
       parserOptions: {
