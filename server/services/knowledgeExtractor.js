@@ -113,11 +113,15 @@ export async function checkAndExtractKnowledge(companionId, messageCount) {
   if (messageCount % interval !== 0) return null;
 
   // Get recent messages from the last open session
-  const session = db.prepare(`
+  const session = db
+    .prepare(
+      `
     SELECT messages FROM chat_sessions
     WHERE companion_id = ? AND closed_at IS NULL
     ORDER BY created_at DESC LIMIT 1
-  `).get(companionId);
+  `
+    )
+    .get(companionId);
 
   if (!session) return null;
 

@@ -39,13 +39,9 @@ router.put('/:id', (req, res) => {
     ).run(JSON.stringify(messages), messages.length, id);
 
     // Trigger background knowledge extraction (fire and forget)
-    const session = db
-      .prepare('SELECT companion_id FROM chat_sessions WHERE id = ?')
-      .get(id);
+    const session = db.prepare('SELECT companion_id FROM chat_sessions WHERE id = ?').get(id);
     if (session) {
-      checkAndExtractKnowledge(session.companion_id, messages.length).catch(
-        () => {}
-      );
+      checkAndExtractKnowledge(session.companion_id, messages.length).catch(() => {});
     }
 
     res.json({ success: true });

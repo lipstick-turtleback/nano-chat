@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import * as RadioGroup from '@radix-ui/react-radio-group';
-import * as Switch from '@radix-ui/react-switch';
 import * as Select from '@radix-ui/react-select';
 import { Cross2Icon, ReloadIcon, DownloadIcon, TrashIcon } from '@radix-ui/react-icons';
 
@@ -85,89 +84,6 @@ function SettingsPanel({
               ))}
             </RadioGroup.Root>
           </fieldset>
-
-          {/* Speech */}
-          <h4 className="settings-section-title">Speech</h4>
-
-          <fieldset className="settings-group">
-            <legend>Speech Engine</legend>
-            <RadioGroup.Root
-              className="settings-radio-group"
-              value={speechEngine}
-              onValueChange={setSpeechEngine}
-            >
-              {SPEECH_ENGINES.map((engine) => (
-                <div key={engine.value} className="flex items-center py-1.5">
-                  <RadioGroup.Item className="settings-radio-item" value={engine.value}>
-                    <RadioGroup.Indicator className="settings-radio-indicator" />
-                  </RadioGroup.Item>
-                  <label className="ml-3 cursor-pointer select-none">
-                    <span className="block text-sm font-medium text-gray-800">{engine.label}</span>
-                    <span className="text-xs text-gray-400">{engine.desc}</span>
-                  </label>
-                </div>
-              ))}
-            </RadioGroup.Root>
-          </fieldset>
-
-          <fieldset className="settings-group">
-            <legend>Voice Style</legend>
-            <Select.Root value={voiceStyle} onValueChange={setVoiceStyle}>
-              <Select.Trigger className="settings-select-trigger">
-                <Select.Value />
-                <Select.Icon>
-                  <svg
-                    className="h-4 w-4 text-gray-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </Select.Icon>
-              </Select.Trigger>
-              <Select.Portal>
-                <Select.Content className="settings-select-content">
-                  <Select.Viewport>
-                    {[
-                      { value: 'default', label: 'Default (clear)' },
-                      { value: 'soft', label: 'Soft (calm)' },
-                      { value: 'energetic', label: 'Energetic (upbeat)' },
-                      { value: 'measured', label: 'Measured (paced)' },
-                      { value: 'cheerful', label: 'Cheerful (bright)' },
-                      { value: 'upbeat', label: 'Upbeat (creative)' }
-                    ].map((opt) => (
-                      <Select.Item
-                        key={opt.value}
-                        value={opt.value}
-                        className="settings-select-item"
-                      >
-                        <Select.ItemText>{opt.label}</Select.ItemText>
-                      </Select.Item>
-                    ))}
-                  </Select.Viewport>
-                </Select.Content>
-              </Select.Portal>
-            </Select.Root>
-          </fieldset>
-
-          <div className="settings-toggle">
-            <label className="settings-toggle-label">
-              <Switch.Root
-                className="settings-switch-root"
-                checked={autoSpeak}
-                onCheckedChange={setAutoSpeak}
-              >
-                <Switch.Thumb className="settings-switch-thumb" />
-              </Switch.Root>
-              <span className="settings-toggle-text">Auto-speak assistant responses</span>
-            </label>
-          </div>
 
           {/* AI Provider */}
           <h4 className="settings-section-title">AI Provider</h4>

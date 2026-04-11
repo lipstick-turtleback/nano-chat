@@ -1,16 +1,6 @@
 import ChatMessage from './ChatMessage';
 
-function ChatArea({
-  messages,
-  assistant,
-  onCopy,
-  onSpeak,
-  isSpeaking,
-  isTTSLoading,
-  lastCopiedId,
-  kokoroReady,
-  onToolSubmit
-}) {
+function ChatArea({ messages, assistant, onCopy, lastCopiedId, onToolSubmit, onRequestChallenge }) {
   return (
     <div
       id="chat-container"
@@ -27,6 +17,11 @@ function ChatArea({
           <p className="empty-chat-text">
             Start a conversation with <strong>{assistant?.shortName || 'your companion'}</strong>
           </p>
+          {onRequestChallenge && (
+            <button type="button" className="challenge-btn-empty" onClick={onRequestChallenge}>
+              🎲 Generate a Challenge
+            </button>
+          )}
         </div>
       )}
 
@@ -36,14 +31,18 @@ function ChatArea({
           message={msg}
           assistant={msg.src === 'resp' || msg.src === 'info' ? assistant : null}
           onCopy={(id) => onCopy(msg.text, id)}
-          onSpeak={() => onSpeak(msg.text)}
-          isSpeaking={isSpeaking}
-          isTTSLoading={isTTSLoading}
           lastCopiedId={lastCopiedId}
-          kokoroReady={kokoroReady}
           onToolSubmit={onToolSubmit}
         />
       ))}
+
+      {messages.length > 0 && onRequestChallenge && (
+        <div className="challenge-bar">
+          <button type="button" className="challenge-btn" onClick={onRequestChallenge}>
+            🎲 Generate a Creative Challenge
+          </button>
+        </div>
+      )}
     </div>
   );
 }

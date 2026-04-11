@@ -1,12 +1,4 @@
-function MessageActions({
-  messageId,
-  onCopy,
-  onSpeak,
-  isSpeaking,
-  isTTSLoading,
-  lastCopiedId,
-  kokoroReady
-}) {
+function MessageActions({ messageId, onCopy, lastCopiedId }) {
   const isJustCopied = lastCopiedId === messageId;
 
   return (
@@ -20,20 +12,6 @@ function MessageActions({
       >
         {isJustCopied ? '✅' : '📋'}
       </button>
-      {kokoroReady && (
-        <button
-          type="button"
-          className="action-btn"
-          aria-label={
-            isSpeaking ? 'Stop playing' : isTTSLoading ? 'Loading speech...' : 'Play message'
-          }
-          onClick={onSpeak}
-          disabled={isTTSLoading}
-          title={isTTSLoading ? 'Loading speech model...' : 'Play via TTS'}
-        >
-          {isTTSLoading ? '⏳' : isSpeaking ? '🔇' : '🔊'}
-        </button>
-      )}
     </div>
   );
 }

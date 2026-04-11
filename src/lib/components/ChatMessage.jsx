@@ -37,17 +37,7 @@ function getDisplayText(text, tool) {
   return text.replace(/\{[\s\S]*"tool"\s*:[\s\S]*\}/, '').trim();
 }
 
-function ChatMessage({
-  message,
-  assistant,
-  onCopy,
-  onSpeak,
-  isSpeaking,
-  isTTSLoading,
-  lastCopiedId,
-  kokoroReady,
-  onToolSubmit
-}) {
+function ChatMessage({ message, assistant, onCopy, lastCopiedId, onToolSubmit }) {
   // Detect tool JSON in the message (must be before any early return)
   const tool = useMemo(() => extractTool(message?.text), [message?.text]);
   const displayText = tool ? getDisplayText(message?.text, tool) : message?.text;
@@ -106,15 +96,7 @@ function ChatMessage({
         <div className="message-footer">
           <span className="message-time">{message.timestamp}</span>
           {!isUser && !isProcessing && (
-            <MessageActions
-              messageId={message.id}
-              onCopy={onCopy}
-              onSpeak={onSpeak}
-              isSpeaking={isSpeaking}
-              isTTSLoading={isTTSLoading}
-              lastCopiedId={lastCopiedId}
-              kokoroReady={kokoroReady}
-            />
+            <MessageActions messageId={message.id} onCopy={onCopy} lastCopiedId={lastCopiedId} />
           )}
         </div>
       </div>

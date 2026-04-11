@@ -392,10 +392,7 @@ export const useStore = create((set, get) => ({
     set({
       messages: [
         ...get().messages,
-        createMessageObj(
-          `Generating a creative challenge with: ${themes.join(', ')}...`,
-          'info'
-        )
+        createMessageObj(`Generating a creative challenge with: ${themes.join(', ')}...`, 'info')
       ],
       isProcessing: true
     });
@@ -423,10 +420,7 @@ export const useStore = create((set, get) => ({
       );
 
       set((prev) => ({
-        messages: [
-          ...prev.messages.filter((m) => m.src !== 'info'),
-          challengeMsg
-        ],
+        messages: [...prev.messages.filter((m) => m.src !== 'info'), challengeMsg],
         isProcessing: false
       }));
     } catch (err) {
@@ -434,10 +428,7 @@ export const useStore = create((set, get) => ({
       set((prev) => ({
         messages: [
           ...prev.messages.filter((m) => m.src !== 'info'),
-          createMessageObj(
-            `Couldn't generate a challenge: ${err.message}. Try again!`,
-            'error'
-          )
+          createMessageObj(`Couldn't generate a challenge: ${err.message}. Try again!`, 'error')
         ],
         isProcessing: false
       }));
