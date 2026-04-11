@@ -9,6 +9,7 @@ import gameRoutes from './routes/games.js';
 import knowledgeRoutes from './routes/knowledge.js';
 import sessionRoutes from './routes/sessions.js';
 import challengeRoutes from './routes/challenges.js';
+import storageRoutes from './routes/storage.js';
 import healthRoutes from './routes/health.js';
 
 const app = express();
@@ -36,6 +37,7 @@ app.use('/api/ollama', ollamaRoutes);
 app.use('/api/games', gameRoutes);
 app.use('/api/knowledge', knowledgeRoutes);
 app.use('/api/sessions', sessionRoutes);
+app.use('/api/storage', storageRoutes);
 
 // Error handling
 app.use(errorHandler);

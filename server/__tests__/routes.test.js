@@ -154,6 +154,61 @@ describe('Server Routes', () => {
     });
   });
 
+  describe('Storage (Key-Value per Persona)', () => {
+    it('returns null for nonexistent key', async () => {
+      const res = await request(app).get('/api/storage/Aria/nonexistent_key');
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('exists', false);
+      expect(res.body).toHaveProperty('value', null);
+    });
+
+    it('stores and retrieves a value', async () => {
+      const postRes = await request(app).post('/api/storage/Aria/user_level').send({ value: 'B2' });
+      expect(postRes.status).toBe(200);
+      expect(postRes.body).toHaveProperty('success', true);
+
+      const getRes = await request(app).get('/api/storage/Aria/user_level');
+      expect(getRes.status).toBe(200);
+      expect(getRes.body).toHaveProperty('value', 'B2');
+      expect(getRes.body).toHaveProperty('exists', true);
+    });
+
+    it('deletes a value', async () => {
+      await request(app).post('/api/storage/Aria/temp_key').send({ value: 'temp' });
+
+      const delRes = await request(app).delete('/api/storage/Aria/temp_key');
+      expect(delRes.status).toBe(200);
+      expect(delRes.body).toHaveProperty('success', true);
+
+      const getRes = await request(app).get('/api/storage/Aria/temp_key');
+      expect(getRes.body).toHaveProperty('exists', false);
+    });
+
+    it('lists all keys for a companion', async () => {
+      await request(app).post('/api/storage/Aria/test_key_1').send({ value: 1 });
+      await request(app).post('/api/storage/Aria/test_key_2').send({ value: 2 });
+
+      const res = await request(app).get('/api/storage/Aria');
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('keys');
+      expect(Array.isArray(res.body.keys)).toBe(true);
+    });
+
+    it('batch sets multiple values', async () => {
+      const res = await request(app)
+        .post('/api/storage/Aria/batch')
+        .send({ data: { batch_1: 'a', batch_2: 'b', batch_3: 'c' } });
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('success', true);
+      expect(res.body.keys).toHaveLength(3);
+    });
+
+    it('rejects storage without value', async () => {
+      const res = await request(app).post('/api/storage/Aria/empty_key').send({});
+      expect(res.status).toBe(400);
+    });
+  });
+
   describe('Error Handling', () => {
     it('returns 404 for unknown routes', async () => {
       const res = await request(app).get('/api/nonexistent');
