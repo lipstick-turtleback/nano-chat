@@ -80,7 +80,20 @@ function convertLatex(text) {
  */
 export function renderMarkdown(text) {
   if (!text) return '';
-  const convertedText = convertLatex(text);
+
+  // Strip tool JSON blocks from markdown rendering
+  let cleanText = text;
+  try {
+    // Remove any JSON block that has "tool" key
+    cleanText = text.replace(/\{[\s\S]*?"tool"[\s\S]*?\}/g, '').trim();
+    // Also remove markdown code blocks containing JSON
+    cleanText = cleanText.replace(/```json\n[\s\S]*?```/g, '').trim();
+  } catch {
+    // If regex fails, use original text
+    cleanText = text;
+  }
+
+  const convertedText = convertLatex(cleanText);
   const mdHtml = marked.parse(convertedText, MARKED_OPTIONS);
   return sanitizer.sanitize(mdHtml);
 }

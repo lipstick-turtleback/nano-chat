@@ -4,43 +4,48 @@ import ToolRenderer from './ToolRenderer';
 
 /**
  * Try to parse tool JSON from message text.
- * The LLM may return JSON wrapped in markdown code blocks or plain.
+ * Looks for { "tool": "...", "title": "...", "content": {...} } pattern.
  */
 function extractTool(text) {
   if (!text) return null;
 
-  // Try to find a JSON object in the text
-  const jsonMatch = text.match(/\{[\s\S]*"tool"\s*:[\s\S]*\}/);
-  if (!jsonMatch) return null;
-
   try {
+    const jsonMatch = text.match(/\{[\s\S]*"tool"\s*:[\s\S]*\}/);
+    if (!jsonMatch) return null;
     return JSON.parse(jsonMatch[0]);
   } catch {
-    // Try cleaning markdown code block markers
-    const cleaned = jsonMatch[0]
-      .replace(/```json\s*/g, '')
-      .replace(/```\s*/g, '')
-      .trim();
-    try {
-      return JSON.parse(cleaned);
-    } catch {
-      return null;
-    }
+    return null;
   }
 }
 
 /**
- * Get the display text (everything except the tool JSON)
+ * Get the display text with tool JSON removed.
  */
 function getDisplayText(text, tool) {
   if (!tool) return text;
-  return text.replace(/\{[\s\S]*"tool"\s*:[\s\S]*\}/, '').trim();
+
+  // Try to remove the JSON block from the text
+  try {
+    // Find where the tool JSON starts
+    const jsonIndex = text.indexOf('{"tool"');
+    if (jsonIndex > 0) {
+      return text.substring(0, jsonIndex).trim();
+    }
+    // If text IS the tool JSON, return empty (tool renderer handles display)
+    if (text.startsWith('{"tool"')) {
+      return '';
+    }
+  } catch {
+    // Fallback: return original text
+  }
+
+  return text;
 }
 
 function ChatMessage({ message, assistant, onCopy, lastCopiedId, onToolSubmit }) {
   // Detect tool JSON in the message (must be before any early return)
   const tool = useMemo(() => extractTool(message?.text), [message?.text]);
-  const displayText = tool ? getDisplayText(message?.text, tool) : message?.text;
+  const displayText = getDisplayText(message?.text, tool);
 
   if (!message?.text) return null;
 
@@ -74,16 +79,12 @@ function ChatMessage({ message, assistant, onCopy, lastCopiedId, onToolSubmit })
           </div>
         ) : (
           <>
-            {displayText &&
-              displayText !== 'processing...' &&
-              (message.isStreaming ? (
-                <div className="message-content streaming-text">{displayText}</div>
-              ) : (
-                <div
-                  className="message-content"
-                  dangerouslySetInnerHTML={{ __html: message.formattedText }}
-                />
-              ))}
+            {displayText && displayText !== 'processing...' && (
+              <div
+                className="message-content"
+                dangerouslySetInnerHTML={{ __html: message.formattedText }}
+              />
+            )}
             {tool && (
               <ToolRenderer
                 tool={tool}

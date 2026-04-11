@@ -12,6 +12,7 @@ export default defineConfig({
     describe: true,
     it: true,
     expect: true,
-    beforeAll: true
+    beforeAll: true,
+    afterAll: true
   }
 });

@@ -30,7 +30,7 @@ export default [
         expect: 'readonly',
         beforeAll: 'readonly',
         beforeEach: 'readonly',
-        afterEach: 'readonly',
+        afterAll: 'readonly',
         test: 'readonly'
       },
       parserOptions: {

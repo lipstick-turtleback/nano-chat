@@ -419,9 +419,16 @@ export const useStore = create((set, get) => ({
 
       const challenge = await res.json();
 
-      // Insert challenge as JSON in the message
+      // Insert challenge as a raw tool JSON that ToolRenderer can detect
+      // ToolRenderer expects: { tool: "quiz", content: { prompt, options, correct, ... } }
+      const toolJson = {
+        tool: challenge.game || 'quiz',
+        title: challenge.title || 'Creative Challenge',
+        content: challenge.content || challenge.params || {}
+      };
+
       const challengeMsg = createMessageObj(
-        `Here's a creative challenge for you!\n\n\`\`\`json\n${JSON.stringify(challenge, null, 2)}\n\`\`\``,
+        `Here's a creative challenge for you!\n\n${JSON.stringify(toolJson)}`,
         'resp'
       );
 

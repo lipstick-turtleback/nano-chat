@@ -3,7 +3,7 @@ import { defineConfig } from 'jest';
 export default defineConfig({
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/src/test/setup.js'],
-  testMatch: ['**/__tests__/**/*.test.{js,jsx}', '**/*.test.{js,jsx}'],
+  testMatch: ['**/src/**/__tests__/**/*.test.{js,jsx}', '**/src/**/*.test.{js,jsx}'],
   moduleNameMapper: {
     '^\\.(css|less|scss|sass)$': 'identity-obj-proxy'
   },

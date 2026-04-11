@@ -60,8 +60,7 @@ describe('Server Routes', () => {
     });
 
     it('deletes knowledge', async () => {
-      const delRes = await request(app)
-        .delete(`/api/knowledge/default/Aria/${testKey}`);
+      const delRes = await request(app).delete(`/api/knowledge/default/Aria/${testKey}`);
       expect(delRes.status).toBe(200);
       expect(delRes.body).toHaveProperty('success', true);
 
@@ -103,9 +102,7 @@ describe('Server Routes', () => {
       const res = await request(app)
         .post(`/api/sessions/${sessionId}/close`)
         .send({
-          messages: [
-            { src: 'req', text: 'Hello', timestamp: '10:00' }
-          ]
+          messages: [{ src: 'req', text: 'Hello', timestamp: '10:00' }]
         });
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('success', true);
@@ -132,35 +129,27 @@ describe('Server Routes', () => {
     });
 
     it('rolls complex dice notation', async () => {
-      const res = await request(app)
-        .post('/api/games/dice/roll')
-        .send({ notation: '2d6+3' });
+      const res = await request(app).post('/api/games/dice/roll').send({ notation: '2d6+3' });
       expect(res.status).toBe(200);
       expect(res.body.total).toBeGreaterThanOrEqual(5);
       expect(res.body.total).toBeLessThanOrEqual(15);
     });
 
     it('rejects invalid notation', async () => {
-      const res = await request(app)
-        .post('/api/games/dice/roll')
-        .send({ notation: 'invalid' });
+      const res = await request(app).post('/api/games/dice/roll').send({ notation: 'invalid' });
       expect(res.status).toBe(400);
       expect(res.body).toHaveProperty('error');
     });
 
     it('performs skill check', async () => {
-      const res = await request(app)
-        .post('/api/games/dice/check')
-        .send({ modifier: 5, dc: 15 });
+      const res = await request(app).post('/api/games/dice/check').send({ modifier: 5, dc: 15 });
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('success');
       expect(res.body).toHaveProperty('dc', 15);
     });
 
     it('rejects check without required params', async () => {
-      const res = await request(app)
-        .post('/api/games/dice/check')
-        .send({ modifier: 5 });
+      const res = await request(app).post('/api/games/dice/check').send({ modifier: 5 });
       expect(res.status).toBe(400);
     });
   });

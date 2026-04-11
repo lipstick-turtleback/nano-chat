@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import DiceRoller from './DiceRoller';
+import ToolNotification from './ToolNotification';
 
 /**
- * Interactive Quiz Component — renders in chat as a card
+ * Interactive Quiz Component
  */
 function QuizCard({ content, onSubmit }) {
   const [selected, setSelected] = useState(null);
@@ -228,7 +230,7 @@ function FillBlankCard({ content, onSubmit }) {
 }
 
 /**
- * Word Match Card — drag or click to match
+ * Word Match Card
  */
 function WordMatchCard({ content, onSubmit }) {
   const [matches, setMatches] = useState({});
@@ -322,20 +324,330 @@ function WordMatchCard({ content, onSubmit }) {
 }
 
 /**
+ * Riddle Card — guess the answer
+ */
+function RiddleCard({ content, onSubmit }) {
+  const [guess, setGuess] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  const [hintRevealed, setHintRevealed] = useState(false);
+
+  const handleSubmit = () => {
+    if (!guess.trim()) return;
+    setSubmitted(true);
+    const isCorrect = guess.trim().toLowerCase() === content.answer.toLowerCase();
+    onSubmit?.({ guess: guess.trim(), isCorrect });
+  };
+
+  return (
+    <div className="tool-card riddle-card">
+      <div className="tool-card-header">
+        <span className="tool-badge">🤔</span>
+        <h4>Riddle</h4>
+      </div>
+      <p className="riddle-text">{content.riddle}</p>
+
+      {!submitted ? (
+        <>
+          <div className="riddle-input-row">
+            <input
+              type="text"
+              className="riddle-input"
+              value={guess}
+              onChange={(e) => setGuess(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+              placeholder="Your answer..."
+            />
+            <button type="button" className="quiz-submit-btn" onClick={handleSubmit}>
+              Guess
+            </button>
+          </div>
+          {!hintRevealed && content.hint && (
+            <button type="button" className="hint-btn" onClick={() => setHintRevealed(true)}>
+              💡 Show Hint
+            </button>
+          )}
+          {hintRevealed && <p className="hint-text">💡 {content.hint}</p>}
+        </>
+      ) : (
+        <div className="quiz-explanation">
+          {guess.toLowerCase() === content.answer.toLowerCase() ? (
+            <strong>🎉 Correct! The answer is: {content.answer}</strong>
+          ) : (
+            <>
+              <strong>Not quite — The answer is: {content.answer}</strong>
+              <p>You guessed: "{guess}"</p>
+            </>
+          )}
+          {content.explanation && <p>{content.explanation}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Emoji Pictionary — guess the word/phrase from emojis
+ */
+function EmojiPictCard({ content, onSubmit }) {
+  const [guess, setGuess] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  const [hintRevealed, setHintRevealed] = useState(false);
+
+  const handleSubmit = () => {
+    if (!guess.trim()) return;
+    setSubmitted(true);
+    const isCorrect = guess
+      .trim()
+      .toLowerCase()
+      .includes(content.answer.toLowerCase().split(' ')[0]);
+    onSubmit?.({ guess: guess.trim(), isCorrect });
+  };
+
+  return (
+    <div className="tool-card emoji-pict-card">
+      <div className="tool-card-header">
+        <span className="tool-badge">🎭</span>
+        <h4>Emoji Pictionary</h4>
+      </div>
+      <div className="emoji-display">{content.emojis}</div>
+      <p className="emoji-category">{content.category || 'Guess the phrase!'}</p>
+
+      {!submitted ? (
+        <>
+          <div className="riddle-input-row">
+            <input
+              type="text"
+              className="riddle-input"
+              value={guess}
+              onChange={(e) => setGuess(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+              placeholder="What does this mean?"
+            />
+            <button type="button" className="quiz-submit-btn" onClick={handleSubmit}>
+              Guess
+            </button>
+          </div>
+          {!hintRevealed && content.hint && (
+            <button type="button" className="hint-btn" onClick={() => setHintRevealed(true)}>
+              💡 Show Hint
+            </button>
+          )}
+          {hintRevealed && <p className="hint-text">💡 {content.hint}</p>}
+        </>
+      ) : (
+        <div className="quiz-explanation">
+          <strong>
+            {submitted && guess.toLowerCase().includes(content.answer.toLowerCase().split(' ')[0])
+              ? '🎉 Correct!'
+              : `The answer is: ${content.answer}`}
+          </strong>
+          {!guess.toLowerCase().includes(content.answer.toLowerCase().split(' ')[0]) && (
+            <p>You guessed: "{guess}"</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Word Ladder — change one letter at a time
+ */
+function WordLadderCard({ content, onSubmit }) {
+  const [currentWord, setCurrentWord] = useState(content.startWord);
+  const [attempts, setAttempts] = useState([]);
+  const [completed, setCompleted] = useState(false);
+
+  const handleGuess = (word) => {
+    if (!word.trim() || completed) return;
+    const isCorrect = word.trim().toLowerCase() === content.targetWord.toLowerCase();
+    const newAttempts = [...attempts, word.trim()];
+    setAttempts(newAttempts);
+
+    if (isCorrect) {
+      setCompleted(true);
+      onSubmit?.({ attempts: newAttempts, success: true, totalAttempts: newAttempts.length });
+    }
+  };
+
+  return (
+    <div className="tool-card word-ladder-card">
+      <div className="tool-card-header">
+        <span className="tool-badge">🪜</span>
+        <h4>
+          Word Ladder: {content.startWord} → {content.targetWord}
+        </h4>
+      </div>
+      <p className="ladder-instruction">Change one letter at a time to reach the target word.</p>
+
+      <div className="ladder-history">
+        <div className="ladder-word start">{content.startWord}</div>
+        {attempts.map((word, i) => (
+          <div
+            key={i}
+            className={`ladder-word ${i === attempts.length - 1 && completed ? 'target' : ''}`}
+          >
+            {word}
+          </div>
+        ))}
+      </div>
+
+      {!completed && <WordInput onSubmit={handleGuess} label="Next word" />}
+
+      {completed && (
+        <div className="quiz-explanation">
+          <strong>
+            🎉 Solved in {attempts.length} {attempts.length === 1 ? 'step' : 'steps'}!
+          </strong>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Would You Rather Card
+ */
+function WouldYouRatherCard({ content, onSubmit }) {
+  const [selected, setSelected] = useState(null);
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = () => {
+    if (!selected) return;
+    setSubmitted(true);
+    onSubmit?.({ selected });
+  };
+
+  return (
+    <div className="tool-card wyr-card">
+      <div className="tool-card-header">
+        <span className="tool-badge">🤷</span>
+        <h4>Would You Rather?</h4>
+      </div>
+
+      <div className="wyr-options">
+        <button
+          type="button"
+          className={`wyr-option ${selected === 0 ? 'selected' : ''} ${submitted ? 'disabled' : ''}`}
+          onClick={() => !submitted && setSelected(0)}
+        >
+          <span className="wyr-letter">A</span>
+          {content.optionA}
+        </button>
+        <div className="wyr-or">OR</div>
+        <button
+          type="button"
+          className={`wyr-option ${selected === 1 ? 'selected' : ''} ${submitted ? 'disabled' : ''}`}
+          onClick={() => !submitted && setSelected(1)}
+        >
+          <span className="wyr-letter">B</span>
+          {content.optionB}
+        </button>
+      </div>
+
+      {!submitted ? (
+        <button
+          type="button"
+          className="quiz-submit-btn"
+          onClick={handleSubmit}
+          disabled={!selected}
+        >
+          Choose
+        </button>
+      ) : (
+        <div className="quiz-explanation">
+          <strong>You chose: {selected === 0 ? content.optionA : content.optionB}</strong>
+          {content.explanation && <p>{content.explanation}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Helper: Simple word input component
+ */
+function WordInput({ onSubmit, label = 'Your answer' }) {
+  const [word, setWord] = useState('');
+
+  const handleSubmit = () => {
+    if (word.trim()) {
+      onSubmit(word.trim());
+      setWord('');
+    }
+  };
+
+  return (
+    <div className="riddle-input-row">
+      <input
+        type="text"
+        className="riddle-input"
+        value={word}
+        onChange={(e) => setWord(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+        placeholder={label}
+      />
+      <button type="button" className="quiz-submit-btn" onClick={handleSubmit}>
+        Submit
+      </button>
+    </div>
+  );
+}
+
+/**
  * Main Tool Renderer — dispatches to the right card type
  */
 function ToolRenderer({ tool, onSubmit }) {
-  switch (tool.tool) {
+  const { tool: toolType } = tool;
+
+  // Interactive tools
+  switch (toolType) {
     case 'quiz':
     case 'story_quiz':
       return <QuizCard content={tool.content} onSubmit={onSubmit} />;
+
     case 'true_false':
       return <TrueFalseCard content={tool.content} onSubmit={onSubmit} />;
+
     case 'fill_blank':
       return <FillBlankCard content={tool.content} onSubmit={onSubmit} />;
+
     case 'word_match':
       return <WordMatchCard content={tool.content} onSubmit={onSubmit} />;
+
+    case 'riddle':
+      return <RiddleCard content={tool.content} onSubmit={onSubmit} />;
+
+    case 'word_ladder':
+      return <WordLadderCard content={tool.content} onSubmit={onSubmit} />;
+
+    case 'emoji_pictionary':
+    case 'emoji_pict':
+      return <EmojiPictCard content={tool.content} onSubmit={onSubmit} />;
+
+    case 'would_you_rather':
+      return <WouldYouRatherCard content={tool.content} onSubmit={onSubmit} />;
+
+    case 'dice_roll':
+      return <DiceRoller content={tool.content} onSubmit={onSubmit} />;
+
+    // Background/notification tools
+    case 'save_memory':
+    case 'track_progress':
+    case 'unlock_achievement':
+    case 'achievement':
+    case 'storage_view':
+    case 'storage_set':
+    case 'info':
+    case 'warning':
+    case 'challenge':
+      return <ToolNotification tool={tool} />;
+
     default:
+      // If tool type is unknown, try to render as a generic info notification
+      if (tool.title || tool.content?.message) {
+        return <ToolNotification tool={tool} />;
+      }
       return null;
   }
 }
