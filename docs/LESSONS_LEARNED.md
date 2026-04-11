@@ -271,18 +271,21 @@
 ## 2026-04-10 — Streaming Fix + Companion Expansion
 
 ### Streaming Text Caused Flashing/Re-rendering Every Word
+
 **Context:** Every streaming chunk called `createMessageObj(chunk)` which re-ran `marked.parse()` + `DOMPurify.sanitize()` on the FULL cumulative text.
 **What happened:** The entire HTML was replaced on every word -- causing visible flickering, layout shifts, and wasted CPU on markdown parsing 50+ times per second.
 **Fix:** During streaming, update only `message.text` (no markdown). Show plain text with blinking cursor. After stream completes, call `finalizeMessage()` which renders markdown ONCE.
 **Rule:** Never re-parse/re-render during a tight streaming loop. Update raw state during streaming, render once at the end.
 
 ### Chrome promptStreaming Returns Cumulative Text
+
 **Context:** Chrome's `session.promptStreaming()` returns the FULL response so far on each chunk -- not just the new tokens.
 **What happened:** Both Chrome and Ollama yield cumulative text. Each chunk replaces the previous display, not appended to it.
 **Fix:** `updateMessageText()` sets `text` directly. No concatenation needed. After stream: `finalizeMessage()` renders markdown once.
 **Rule:** Always verify chunk behavior per provider. Both Chrome and Ollama return cumulative full text in each chunk.
 
 ### 10 Companions with Unique Personalities
+
 **Context:** Started with 5 companions. Users want genuine variety in expertise areas and teaching styles.
 **What happened:** Added Atlas (career strategy), Luna (writing/storytelling), Zen (coding), Hera (leadership) -- each with unique personality, mood, charisma, goals, and teaching style.
 **Fix:** Each companion has: id, name, shortName, tagline, emoji, color, colorBg, gradient, detailed system prompt, category, voiceStyle.

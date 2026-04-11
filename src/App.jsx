@@ -7,6 +7,7 @@ import ChatArea from './lib/components/ChatArea';
 import ChatInput from './lib/components/ChatInput';
 import RuntimeErrorBanner from './lib/components/RuntimeErrorBanner';
 import ErrorScreen from './lib/components/ErrorScreen';
+import SettingsPanel from './lib/components/SettingsPanel';
 
 function App() {
   const {
@@ -26,12 +27,15 @@ function App() {
     ollamaModels,
     selectedOllamaModel,
     modelDownloadProgress,
+    settings,
+    showSettings,
     init,
     selectCompanion,
     switchProvider,
     sendMessage,
     cancelRequest,
     exportChat,
+    clearChat,
     copyMessage,
     speakMessage,
     setTextInputValue,
@@ -39,13 +43,19 @@ function App() {
     refreshOllamaModels,
     dismissError,
     initTTS,
-    handleToolSubmit
+    handleToolSubmit,
+    openSettings,
+    closeSettings,
+    updateSettings
   } = useStore();
 
   useEffect(() => {
     init();
     initTTS();
-  }, [init, initTTS]);
+    if (settings.fontSize) {
+      document.documentElement.style.fontSize = `${settings.fontSize}px`;
+    }
+  }, [init, initTTS, settings.fontSize]);
 
   const handleKeyDown = (e) => {
     if (e.code === 'Enter' && !e.shiftKey) {
@@ -73,16 +83,6 @@ function App() {
         selectedAssistantId={selectedAssistantId}
         onSelect={selectCompanion}
         disabled={isBusy}
-        provider={provider}
-        onProviderChange={switchProvider}
-        ollamaConnected={ollamaConnected}
-        ollamaModels={ollamaModels}
-        selectedOllamaModel={selectedOllamaModel}
-        onModelChange={setSelectedOllamaModel}
-        onRefreshModels={refreshOllamaModels}
-        ollamaLoading={false}
-        onExport={exportChat}
-        hasMessages={messages.length > 0}
       />
 
       <main className="main-chat">
@@ -91,6 +91,7 @@ function App() {
           ollamaConnected={ollamaConnected}
           selectedOllamaModel={selectedOllamaModel}
           downloadProgress={modelDownloadProgress}
+          onSettingsOpen={openSettings}
         />
 
         {runtimeError && <RuntimeErrorBanner message={runtimeError} onDismiss={dismissError} />}
@@ -117,6 +118,24 @@ function App() {
           maxInputLength={MAX_INPUT_LENGTH}
         />
       </main>
+
+      {showSettings && (
+        <SettingsPanel
+          settings={settings}
+          onUpdate={updateSettings}
+          onClose={closeSettings}
+          provider={provider}
+          onProviderChange={switchProvider}
+          ollamaConnected={ollamaConnected}
+          ollamaModels={ollamaModels}
+          selectedOllamaModel={selectedOllamaModel}
+          onModelChange={setSelectedOllamaModel}
+          onRefreshModels={refreshOllamaModels}
+          onExportChat={exportChat}
+          hasMessages={messages.length > 0}
+          onClearChat={clearChat}
+        />
+      )}
     </div>
   );
 }

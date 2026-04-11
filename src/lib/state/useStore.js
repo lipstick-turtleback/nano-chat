@@ -91,6 +91,16 @@ export const useStore = create((set, get) => ({
   isTTSLoading: false,
   kokoroReady: false,
 
+  // Settings
+  settings: {
+    fontSize: 16,
+    speechEngine: 'browser',
+    voiceStyle: 'default',
+    autoSpeak: false,
+    darkMode: false
+  },
+  showSettings: false,
+
   // Abort
   abortController: null,
 
@@ -371,6 +381,8 @@ export const useStore = create((set, get) => ({
     }
   },
 
+  clearChat: () => set({ messages: [], runtimeError: null, lastCopiedId: null }),
+
   setTextInputValue: (v) => set({ textInputValue: v }),
   setSelectedOllamaModel: (m) => set({ selectedOllamaModel: m }),
   dismissError: () => set({ runtimeError: null }),
@@ -397,6 +409,20 @@ export const useStore = create((set, get) => ({
         return m;
       });
       return { messages: updated };
+    });
+  },
+
+  // Settings
+  openSettings: () => set({ showSettings: true }),
+  closeSettings: () => set({ showSettings: false }),
+  updateSettings: (newSettings) => {
+    set((prev) => {
+      const settings = { ...prev.settings, ...newSettings };
+      // Apply font size immediately
+      if (newSettings.fontSize) {
+        document.documentElement.style.fontSize = `${newSettings.fontSize}px`;
+      }
+      return { settings, showSettings: false };
     });
   },
 
