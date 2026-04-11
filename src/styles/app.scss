@@ -1754,6 +1754,121 @@ body {
   }
 }
 
+// Settings Radio Item (Radix UI)
+.settings-radio-item {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--r-full);
+  border: 2px solid var(--border-medium);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--t-fast);
+  flex-shrink: 0;
+
+  &:hover {
+    border-color: var(--accent);
+  }
+
+  &[data-state='checked'] {
+    border-color: var(--accent);
+    background: var(--accent);
+  }
+}
+
+.settings-radio-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: white;
+}
+
+// Settings Switch (Radix UI)
+.settings-switch-root {
+  width: 40px;
+  height: 22px;
+  background: var(--border-medium);
+  border-radius: var(--r-full);
+  position: relative;
+  transition: background var(--t-fast);
+  cursor: pointer;
+
+  &[data-state='checked'] {
+    background: var(--accent);
+  }
+}
+
+.settings-switch-thumb {
+  display: block;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: var(--r-full);
+  transition: transform var(--t-fast);
+  transform: translateX(3px);
+  box-shadow: var(--shadow-xs);
+
+  [data-state='checked'] & {
+    transform: translateX(21px);
+  }
+}
+
+// Settings Select (Radix UI)
+.settings-select-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--t-fast);
+
+  &:hover {
+    border-color: var(--border-medium);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-light);
+  }
+}
+
+.settings-select-content {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
+  z-index: 100;
+}
+
+.settings-select-item {
+  padding: 8px 12px;
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background var(--t-fast);
+
+  &[data-highlighted] {
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+
+  &[data-state='checked'] {
+    background: var(--accent-light);
+    color: var(--accent);
+    font-weight: 500;
+  }
+}
+
 .settings-provider-icon {
   font-size: 1.5rem;
   flex-shrink: 0;

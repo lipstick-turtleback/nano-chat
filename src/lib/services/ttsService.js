@@ -38,6 +38,19 @@ export function isTTSLoading() {
 }
 
 /**
+ * Map companion voiceStyle to actual Kokoro voice names
+ * https://github.com/hexgrad/kokoro
+ */
+const VOICE_MAP = {
+  cheerful: 'af_heart', // Warm, bright female voice
+  soft: 'af_sky', // Calm, gentle female voice
+  energetic: 'am_puck', // Energetic male voice
+  measured: 'am_adam', // Measured, deep male voice
+  upbeat: 'af_bella', // Bright, expressive female voice
+  default: 'af_heart' // Default: warm female voice
+};
+
+/**
  * Speak text using Kokoro-js — generates audio and plays it
  * Returns a promise that resolves when playback finishes
  */
@@ -47,8 +60,11 @@ export async function speak(text, voiceStyle = 'default') {
 
   if (!ttsInstance) await initTTS();
 
+  // Map companion voice style to actual Kokoro voice
+  const voice = VOICE_MAP[voiceStyle] || VOICE_MAP.default;
+
   // Generate audio from text
-  const audio = await ttsInstance.generate(text, { voice: voiceStyle });
+  const audio = await ttsInstance.generate(text, { voice });
 
   // Play the audio
   currentAudio = audio;

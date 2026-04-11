@@ -292,3 +292,28 @@
 **Rule:** Companions must feel genuinely different -- not just reskinned versions of the same AI. Different expertise, different teaching style, different personality.
 
 ---
+
+## 2026-04-10 — Radix UI + Tailwind + Settings Consolidation
+
+### Radix UI Primitives Replace Hand-Rolled Components
+
+**Context:** Settings panel had custom radio buttons, toggles, selects, and modals — all handwritten with SCSS.
+**What happened:** Custom components had inconsistent focus states, no keyboard navigation, and lots of CSS to maintain.
+**Fix:** Replaced with `@radix-ui/react-dialog`, `@radix-ui/react-radio-group`, `@radix-ui/react-switch`, `@radix-ui/react-select` + Tailwind utility classes. Result: 60% less CSS, full accessibility.
+**Rule:** Use Radix UI for interactive primitives (dialog, select, switch, radio, tooltip). Use Tailwind for layout/spacing/colors. Write SCSS only for custom animations and design tokens.
+
+### Settings Should Consolidate Secondary Controls
+
+**Context:** Provider switching, Ollama model selection, export, and font settings were scattered across sidebar and header.
+**What happened:** Sidebar was cluttered, header was crowded, and settings were hard to find.
+**Fix:** Sidebar → companions only. Settings modal (gear icon in header) → everything else (provider, model, font, speech, export, clear).
+**Rule:** Primary navigation in sidebar. Secondary/settings controls in a modal. Header → status + settings trigger.
+
+### Player Stats Persist in localStorage with Universal KV Store
+
+**Context:** Each companion needed to track user progress, but there was no unified storage.
+**What happened:** Companion-specific data would be lost on browser close.
+**Fix:** `playerStats.js` — universal key-value store with dot notation (`Aria.quizScore`, `dnd.strength`). Auto-saves on every change. Companion progress, achievements, DnD characters all persist.
+**Rule:** Use dot-notation keys for namespacing. Always save after mutation. Provide get/set/delete/remove operations.
+
+---

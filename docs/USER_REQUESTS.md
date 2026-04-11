@@ -124,20 +124,31 @@
 - [x] SCSS styling with design tokens
 - [x] ESLint 9.39.4 + Prettier + Biome 2.4.11
 - [x] Vite 7.3.2
-- [x] Kokoro-js TTS integration
-- [x] 5 personal-development companions with unique themes
+- [x] Kokoro-js TTS integration (audio playback)
+- [x] 10 personal-development companions (Aria, Kai, Nova, Sage, Pixel, Atlas, Luna, Zen, Hera, Aino)
+- [x] Aino — Finnish A1 → B1 tutor with full curriculum
 - [x] Interactive quiz tools (Quiz, T/F, Fill-Blank, Word Match)
 - [x] Theme engine with 105 random themes
+- [x] Universal game engine (10 game types: 20Q, Word Ladder, Riddle, Story, T&L, Association, WYR, Quote, Emoji, Hot/Cold)
+- [x] DnD RPG engine (4 classes, stat rolling, story generation, d20 resolution)
 - [x] Challenge cache with LRU pruning
 - [x] Knowledge service (silent memory compression)
-- [x] Component decomposition (9 components)
+- [x] Player stats system with localStorage persistence
+- [x] Universal KV store for companion data (get/set/delete/remove)
+- [x] Radix UI settings panel (Dialog, RadioGroup, Switch, Select)
+- [x] Settings consolidation (provider/model/export in modal)
+- [x] Component decomposition (Sidebar, ChatArea, ChatMessage, ChatInput, etc.)
+- [x] Streaming text animation with blinking cursor
 - [x] SVG favicon
-- [x] Comprehensive README
-- [x] LESSONS_LEARNED.md (auto-maintained)
-- [x] AGENTS.md (auto-maintained)
+- [x] Comprehensive README + ARCHITECTURE.md
+- [x] LESSONS_LEARNED.md (auto-maintained, 4 sections)
+- [x] AGENTS.md (auto-maintained project rules)
+- [x] USER_REQUESTS.md (complete log of 63+ requests)
+- [x] IMPLEMENTATION_PLAN.md (10-phase plan)
+- [x] CHROME_AI_SPEC.md (full API spec with examples)
 - [x] 36 unit tests passing (5 suites)
-- [x] E2E tests (Playwright)
-- [x] Dark → Light theme redesign
+- [x] E2E tests configured (Playwright)
+- [x] Light theme redesign
 - [x] isInitializing/isProcessing state management
 - [x] Request log (this file)
 
@@ -145,10 +156,10 @@
 
 ## Pending / In Progress
 
-- [ ] Wire up theme challenge generation to LLM in live chat
-- [ ] Wire up knowledge compression to LLM every 5 messages
-- [ ] Progress dashboard (streaks, achievements, scores)
-- [ ] ToolRenderer: integrate all 12 tool types from chatTools.js
-- [ ] Textarea auto-resize integration
-- [ ] Remove Tailwind dependency (fully SCSS)
+- [ ] Wire up theme challenge generation to LLM in live chat (🎲 button → LLM → render tool card)
+- [ ] Wire up knowledge compression to LLM every 5 messages (silent)
+- [ ] ToolRenderer: integrate StorageTool, game cards, DnD cards
+- [ ] Textarea auto-resize integration (hook ready)
+- [ ] Progress dashboard UI (streaks, achievements, scores)
+- [ ] Remove Tailwind dependency (fully SCSS) — _low priority since Tailwind + Radix works well_
 - [ ] Playwright E2E test execution (browser install needed)
