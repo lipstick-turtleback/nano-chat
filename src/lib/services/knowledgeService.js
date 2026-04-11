@@ -1,111 +1,63 @@
-// ═══════════════════════════════════════════
-// User Knowledge Store — localStorage
-// Each companion maintains a background memory of what it knows about the user
-// ═══════════════════════════════════════════
-
-const STORAGE_KEY = 'lexichat_knowledge';
+const API = '/api/knowledge';
 
 /**
- * Load all companion memories from localStorage
+ * Load knowledge for a companion from server
  */
-export function loadAllKnowledge() {
+export async function loadKnowledge(companionId, prefix = '') {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
+    const res = await fetch(`${API}/default/${companionId}?prefix=${prefix}`);
+    if (!res.ok) return {};
+    const data = await res.json();
+    return data.knowledge || {};
   } catch {
     return {};
   }
 }
 
 /**
- * Load a specific companion's knowledge about the user
+ * Save knowledge for a companion to server
  */
-export function loadKnowledge(companionId) {
-  const all = loadAllKnowledge();
-  return all[companionId] || null;
-}
-
-/**
- * Save knowledge for a specific companion
- */
-export function saveKnowledge(companionId, data) {
+export async function saveKnowledge(companionId, data) {
   try {
-    const all = loadAllKnowledge();
-    all[companionId] = {
-      ...all[companionId],
-      ...data,
-      updatedAt: new Date().toISOString()
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+    for (const [key, value] of Object.entries(data)) {
+      await fetch(`${API}/default/${companionId}/${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value })
+      });
+    }
   } catch (err) {
     console.error('Failed to save knowledge:', err);
   }
 }
 
 /**
- * Build the system prompt augmentation with known user context
- * This is prepended to the companion's system prompt invisibly
+ * Build knowledge context string for system prompt augmentation
  */
-export function buildKnowledgeContext(companionId) {
-  const knowledge = loadKnowledge(companionId);
-  if (!knowledge || !knowledge.userProfile) return '';
-
-  const { userProfile, progress, preferences } = knowledge;
+export async function buildKnowledgeContext(companionId) {
+  const knowledge = await loadKnowledge(companionId);
+  if (!knowledge || Object.keys(knowledge).length === 0) return '';
 
   const parts = [];
 
-  if (userProfile) {
+  if (knowledge.userProfile) {
+    const p = knowledge.userProfile;
     parts.push(`## What You Know About This User`);
-    if (userProfile.strengths?.length) {
-      parts.push(`- **Strengths:** ${userProfile.strengths.join(', ')}`);
-    }
-    if (userProfile.weaknesses?.length) {
-      parts.push(`- **Areas to work on:** ${userProfile.weaknesses.join(', ')}`);
-    }
-    if (userProfile.goals?.length) {
-      parts.push(`- **Goals:** ${userProfile.goals.join(', ')}`);
-    }
-    if (userProfile.interests?.length) {
-      parts.push(`- **Interests:** ${userProfile.interests.join(', ')}`);
-    }
-    if (userProfile.level) {
-      parts.push(`- **Current level:** ${userProfile.level}`);
-    }
-    if (userProfile.learningStyle) {
-      parts.push(`- **Learning style:** ${userProfile.learningStyle}`);
-    }
-    if (userProfile.notes) {
-      parts.push(`- **Notes:** ${userProfile.notes}`);
-    }
+    if (p.strengths?.length) parts.push(`- **Strengths:** ${p.strengths.join(', ')}`);
+    if (p.weaknesses?.length) parts.push(`- **Areas to work on:** ${p.weaknesses.join(', ')}`);
+    if (p.goals?.length) parts.push(`- **Goals:** ${p.goals.join(', ')}`);
+    if (p.interests?.length) parts.push(`- **Interests:** ${p.interests.join(', ')}`);
+    if (p.level) parts.push(`- **Current level:** ${p.level}`);
+    if (p.learningStyle) parts.push(`- **Learning style:** ${p.learningStyle}`);
   }
 
-  if (progress) {
+  if (knowledge.progress) {
+    const pr = knowledge.progress;
     parts.push(`## Progress Tracking`);
-    if (progress.sessionsCompleted) {
-      parts.push(`- Sessions completed: ${progress.sessionsCompleted}`);
-    }
-    if (progress.streak) {
-      parts.push(`- Current streak: ${progress.streak} days`);
-    }
-    if (progress.lastTopics?.length) {
-      parts.push(`- Recently covered: ${progress.lastTopics.join(', ')}`);
-    }
-    if (progress.achievements?.length) {
-      parts.push(`- Achievements: ${progress.achievements.join(', ')}`);
-    }
-  }
-
-  if (preferences) {
-    parts.push(`## User Preferences`);
-    if (preferences.language) {
-      parts.push(`- Preferred language: ${preferences.language}`);
-    }
-    if (preferences.pace) {
-      parts.push(`- Preferred pace: ${preferences.pace}`);
-    }
-    if (preferences.avoidTopics?.length) {
-      parts.push(`- Topics to avoid: ${preferences.avoidTopics.join(', ')}`);
-    }
+    if (pr.sessionsCompleted) parts.push(`- Sessions completed: ${pr.sessionsCompleted}`);
+    if (pr.streakDays) parts.push(`- Current streak: ${pr.streakDays} days`);
+    if (pr.lastTopics?.length) parts.push(`- Recently covered: ${pr.lastTopics.join(', ')}`);
+    if (pr.achievements?.length) parts.push(`- Achievements: ${pr.achievements.join(', ')}`);
   }
 
   if (parts.length === 0) return '';
@@ -114,48 +66,4 @@ export function buildKnowledgeContext(companionId) {
     parts.join('\n') +
     '\n\nUse this knowledge to personalise your responses. Reference past progress, celebrate achievements, and adapt to their learning style. Be warm and show you remember them — but NEVER explicitly mention "I see in my notes that..." or reveal your memory system exists. Just naturally remember and adapt.'
   );
-}
-
-/**
- * Generate a knowledge compression prompt
- * The LLM uses this to summarise what it learned about the user
- */
-export function createKnowledgeCompressionPrompt(recentMessages) {
-  return `Based on the recent conversation, update your knowledge about this user.
-
-Review these messages and identify:
-- New strengths demonstrated
-- Weaknesses or recurring errors
-- Goals or interests mentioned
-- Learning preferences or style hints
-- Topics they enjoy or struggle with
-- Progress milestones
-
-Recent conversation:
-${recentMessages.map((m) => `[${m.src}] ${m.text}`).join('\n')}
-
-Respond with a JSON object (nothing else):
-{
-  "userProfile": {
-    "strengths": ["strength1", ...],
-    "weaknesses": ["weakness1", ...],
-    "goals": ["goal1", ...],
-    "interests": ["interest1", ...],
-    "level": "estimated level (e.g., B2, C1, beginner, etc.)",
-    "learningStyle": "e.g., visual, hands-on, analytical, etc.",
-    "notes": "any other relevant observations"
-  },
-  "progress": {
-    "streak": 1,
-    "lastTopics": ["topic1", ...],
-    "achievements": ["achievement1", ...]
-  },
-  "preferences": {
-    "language": "en",
-    "pace": "moderate",
-    "avoidTopics": []
-  }
-}
-
-Only output valid JSON. No other text.`;
 }

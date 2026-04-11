@@ -10,6 +10,15 @@ import {
 } from '../utils/constants';
 import { renderMarkdown } from '../utils/markdown';
 import { speak, stopSpeaking, initTTS, isTTSReady } from '../services/ttsService';
+import { loadKnowledge, saveKnowledge, buildKnowledgeContext } from '../services/knowledgeService';
+import {
+  loadPlayerData,
+  savePlayerData,
+  getCompanionProgress,
+  updateCompanionProgress
+} from '../services/playerStats';
+
+const API = '/api';
 
 const nextId = () =>
   typeof crypto !== 'undefined' && crypto.randomUUID

@@ -16,7 +16,7 @@ export async function listModels() {
     const res = await fetch(`${OLLAMA_URL}/api/tags`);
     if (!res.ok) return [];
     const data = await res.json();
-    return (data.models || []).map(m => ({
+    return (data.models || []).map((m) => ({
       name: m.name,
       size: m.size,
       digest: m.digest,
@@ -86,7 +86,9 @@ export async function streamChat(req, res) {
           const json = JSON.parse(line);
           const content = json.message?.content || '';
           fullResponse += content;
-          res.write(`data: ${JSON.stringify({ content, full: fullResponse, done: json.done })}\n\n`);
+          res.write(
+            `data: ${JSON.stringify({ content, full: fullResponse, done: json.done })}\n\n`
+          );
         } catch {
           // Skip malformed
         }

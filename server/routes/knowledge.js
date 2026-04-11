@@ -9,7 +9,8 @@ router.get('/:playerId/:companionId', (req, res) => {
   const { prefix } = req.query;
 
   try {
-    let query = 'SELECT key, value, updated_at FROM knowledge_store WHERE player_id = ? AND companion_id = ?';
+    let query =
+      'SELECT key, value, updated_at FROM knowledge_store WHERE player_id = ? AND companion_id = ?';
     const params = [playerId, companionId];
 
     if (prefix) {
@@ -35,12 +36,14 @@ router.post('/:playerId/:companionId/:key', (req, res) => {
   const { value } = req.body;
 
   try {
-    db.prepare(`
+    db.prepare(
+      `
       INSERT INTO knowledge_store (player_id, companion_id, key, value)
       VALUES (?, ?, ?, ?)
       ON CONFLICT(player_id, companion_id, key)
       DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP
-    `).run(playerId, companionId, key, JSON.stringify(value), JSON.stringify(value));
+    `
+    ).run(playerId, companionId, key, JSON.stringify(value), JSON.stringify(value));
 
     res.json({ success: true, key, value });
   } catch (err) {
@@ -53,8 +56,9 @@ router.delete('/:playerId/:companionId/:key', (req, res) => {
   const { playerId, companionId, key } = req.params;
 
   try {
-    db.prepare('DELETE FROM knowledge_store WHERE player_id = ? AND companion_id = ? AND key = ?')
-      .run(playerId, companionId, key);
+    db.prepare(
+      'DELETE FROM knowledge_store WHERE player_id = ? AND companion_id = ? AND key = ?'
+    ).run(playerId, companionId, key);
 
     res.json({ success: true });
   } catch (err) {
