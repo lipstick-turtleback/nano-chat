@@ -95,6 +95,12 @@ export const useStore = create((set, get) => ({
   runtimeError: null,
   lastCopiedId: null,
 
+  // Settings
+  settings: {
+    fontSize: 16
+  },
+  showSettings: false,
+
   // Abort
   abortController: null,
 
