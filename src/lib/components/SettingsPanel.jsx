@@ -11,12 +11,6 @@ const FONT_SIZES = [
   { label: 'Extra Large', value: 20 }
 ];
 
-const SPEECH_ENGINES = [
-  { label: 'Browser Speech', value: 'browser', desc: 'Built-in, fast, no download' },
-  { label: 'Kokoro AI Voice', value: 'kokoro', desc: 'High quality, ~2.5MB download' },
-  { label: 'Off', value: 'off', desc: 'No speech synthesis' }
-];
-
 function SettingsPanel({
   settings,
   onUpdate,
@@ -33,16 +27,10 @@ function SettingsPanel({
   onClearChat
 }) {
   const [fontSize, setFontSize] = useState(String(settings.fontSize || 16));
-  const [speechEngine, setSpeechEngine] = useState(settings.speechEngine || 'browser');
-  const [voiceStyle, setVoiceStyle] = useState(settings.voiceStyle || 'default');
-  const [autoSpeak, setAutoSpeak] = useState(settings.autoSpeak || false);
 
   const handleSave = () => {
     onUpdate({
-      fontSize: Number(fontSize),
-      speechEngine,
-      voiceStyle,
-      autoSpeak
+      fontSize: Number(fontSize)
     });
     document.documentElement.style.fontSize = `${fontSize}px`;
     onClose?.();

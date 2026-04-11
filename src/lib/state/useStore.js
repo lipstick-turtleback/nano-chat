@@ -9,7 +9,6 @@ import {
   DEFAULT_OLLAMA_MODEL
 } from '../utils/constants';
 import { renderMarkdown } from '../utils/markdown';
-import { speak, stopSpeaking, initTTS, isTTSReady } from '../services/ttsService';
 import { loadKnowledge, saveKnowledge, buildKnowledgeContext } from '../services/knowledgeService';
 import {
   loadPlayerData,
@@ -17,6 +16,7 @@ import {
   getCompanionProgress,
   updateCompanionProgress
 } from '../services/playerStats';
+import { pickRandomThemes } from '../utils/themeEngine';
 
 const API = '/api';
 
@@ -95,21 +95,6 @@ export const useStore = create((set, get) => ({
   runtimeError: null,
   lastCopiedId: null,
 
-  // TTS
-  isSpeaking: false,
-  isTTSLoading: false,
-  kokoroReady: false,
-
-  // Settings
-  settings: {
-    fontSize: 16,
-    speechEngine: 'browser',
-    voiceStyle: 'default',
-    autoSpeak: false,
-    darkMode: false
-  },
-  showSettings: false,
-
   // Abort
   abortController: null,
 
@@ -129,7 +114,6 @@ export const useStore = create((set, get) => ({
       runtimeError: null,
       showNoAiError: false,
       modelDownloadProgress: null,
-      isSpeaking: false,
       isInitializing: true
     });
 
@@ -314,45 +298,6 @@ export const useStore = create((set, get) => ({
     }
   },
 
-  // TTS
-  speakMessage: async (text) => {
-    const { selectedAssistantId, isSpeaking } = get();
-    if (isSpeaking) {
-      stopSpeaking();
-      set({ isSpeaking: false });
-      return;
-    }
-
-    const assistant = ASSISTANTS[selectedAssistantId];
-    try {
-      if (!isTTSReady()) {
-        set({ isTTSLoading: true });
-        await initTTS();
-        set({ isTTSLoading: false, kokoroReady: true });
-      }
-      set({ isSpeaking: true });
-      await speak(text, assistant?.voiceStyle || 'default');
-      set({ isSpeaking: false });
-    } catch (err) {
-      console.error('TTS error:', err);
-      set({ isSpeaking: false, isTTSLoading: false });
-    }
-  },
-
-  stopSpeaking: () => {
-    stopSpeaking();
-    set({ isSpeaking: false });
-  },
-
-  initTTS: async () => {
-    try {
-      await initTTS();
-      set({ kokoroReady: true });
-    } catch {
-      set({ kokoroReady: false });
-    }
-  },
-
   copyMessage: async (text, messageId) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -433,6 +378,70 @@ export const useStore = create((set, get) => ({
       }
       return { settings, showSettings: false };
     });
+  },
+
+  // Generate a creative challenge from 3 random themes
+  requestChallenge: async () => {
+    const { selectedAssistantId, isProcessing } = get();
+    if (isProcessing) return;
+
+    // Pick 3 random themes
+    const themes = pickRandomThemes(3);
+
+    // Add a "generating..." message
+    set({
+      messages: [
+        ...get().messages,
+        createMessageObj(
+          `Generating a creative challenge with: ${themes.join(', ')}...`,
+          'info'
+        )
+      ],
+      isProcessing: true
+    });
+
+    try {
+      const res = await fetch(`${API}/challenges/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companionId: selectedAssistantId,
+          themes
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server error: ${res.status}`);
+      }
+
+      const challenge = await res.json();
+
+      // Insert challenge as JSON in the message
+      const challengeMsg = createMessageObj(
+        `Here's a creative challenge for you!\n\n\`\`\`json\n${JSON.stringify(challenge, null, 2)}\n\`\`\``,
+        'resp'
+      );
+
+      set((prev) => ({
+        messages: [
+          ...prev.messages.filter((m) => m.src !== 'info'),
+          challengeMsg
+        ],
+        isProcessing: false
+      }));
+    } catch (err) {
+      console.error('Challenge generation failed:', err);
+      set((prev) => ({
+        messages: [
+          ...prev.messages.filter((m) => m.src !== 'info'),
+          createMessageObj(
+            `Couldn't generate a challenge: ${err.message}. Try again!`,
+            'error'
+          )
+        ],
+        isProcessing: false
+      }));
+    }
   },
 
   _scrollToBottom: () => {

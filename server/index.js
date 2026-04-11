@@ -9,6 +9,7 @@ import ttsRoutes from './routes/tts.js';
 import gameRoutes from './routes/games.js';
 import knowledgeRoutes from './routes/knowledge.js';
 import sessionRoutes from './routes/sessions.js';
+import challengeRoutes from './routes/challenges.js';
 import healthRoutes from './routes/health.js';
 
 const app = express();
@@ -30,6 +31,7 @@ initSchema();
 console.log('✅ Database initialized');
 
 // Routes
+app.use('/api/challenges', challengeRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/ollama', ollamaRoutes);
 app.use('/api/tts', ttsRoutes);

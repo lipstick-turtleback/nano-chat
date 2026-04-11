@@ -19,10 +19,7 @@ function App() {
     isProcessing,
     showNoAiError,
     runtimeError,
-    isSpeaking,
-    isTTSLoading,
     lastCopiedId,
-    kokoroReady,
     ollamaConnected,
     ollamaModels,
     selectedOllamaModel,
@@ -37,12 +34,11 @@ function App() {
     exportChat,
     clearChat,
     copyMessage,
-    speakMessage,
+    requestChallenge,
     setTextInputValue,
     setSelectedOllamaModel,
     refreshOllamaModels,
     dismissError,
-    initTTS,
     handleToolSubmit,
     openSettings,
     closeSettings,
@@ -51,11 +47,10 @@ function App() {
 
   useEffect(() => {
     init();
-    initTTS();
     if (settings.fontSize) {
       document.documentElement.style.fontSize = `${settings.fontSize}px`;
     }
-  }, [init, initTTS, settings.fontSize]);
+  }, [init, settings.fontSize]);
 
   const handleKeyDown = (e) => {
     if (e.code === 'Enter' && !e.shiftKey) {
@@ -100,12 +95,9 @@ function App() {
           messages={messages}
           assistant={assistant}
           onCopy={copyMessage}
-          onSpeak={speakMessage}
-          isSpeaking={isSpeaking}
-          isTTSLoading={isTTSLoading}
           lastCopiedId={lastCopiedId}
-          kokoroReady={kokoroReady}
           onToolSubmit={handleToolSubmit}
+          onRequestChallenge={requestChallenge}
         />
 
         <ChatInput

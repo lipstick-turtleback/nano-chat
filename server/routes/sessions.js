@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import db from '../db.js';
+import { checkAndExtractKnowledge } from '../services/knowledgeExtractor.js';
 
 const router = Router();
 
@@ -36,6 +37,16 @@ router.put('/:id', (req, res) => {
       WHERE id = ?
     `
     ).run(JSON.stringify(messages), messages.length, id);
+
+    // Trigger background knowledge extraction (fire and forget)
+    const session = db
+      .prepare('SELECT companion_id FROM chat_sessions WHERE id = ?')
+      .get(id);
+    if (session) {
+      checkAndExtractKnowledge(session.companion_id, messages.length).catch(
+        () => {}
+      );
+    }
 
     res.json({ success: true });
   } catch (err) {
