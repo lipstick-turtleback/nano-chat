@@ -26,13 +26,7 @@ router.post('/:companionId/batch', (req, res) => {
 
     const tx = db.transaction((entries) => {
       for (const [key, value] of Object.entries(entries)) {
-        stmt.run(
-          playerId,
-          companionId,
-          key,
-          JSON.stringify(value),
-          JSON.stringify(value)
-        );
+        stmt.run(playerId, companionId, key, JSON.stringify(value), JSON.stringify(value));
       }
     });
 

@@ -631,6 +631,52 @@ function ToolRenderer({ tool, onSubmit }) {
     case 'dice_roll':
       return <DiceRoller content={tool.content} onSubmit={onSubmit} />;
 
+    // Two Truths & Lie — 3 statements, find the lie
+    case 'two_truths_lie':
+      return (
+        <TrueFalseCard
+          content={{
+            statements: (tool.content.statements || []).map((s) => ({
+              text: s.text,
+              answer: !s.isLie,
+              explanation: s.explanation
+            }))
+          }}
+          onSubmit={onSubmit}
+        />
+      );
+
+    // Sequence — complete the pattern (rendered as quiz)
+    case 'sequence':
+      return <QuizCard content={tool.content} onSubmit={onSubmit} />;
+
+    // Anagram — unscramble (rendered as riddle)
+    case 'anagram':
+      return (
+        <RiddleCard
+          content={{
+            riddle: `Unscramble: "${tool.content.scrambled}"`,
+            answer: tool.content.answer,
+            hint: tool.content.hint,
+            explanation: tool.content.explanation
+          }}
+          onSubmit={onSubmit}
+        />
+      );
+
+    // Reorder — put words in correct order (rendered as fill blank)
+    case 'reorder':
+      return (
+        <FillBlankCard
+          content={{
+            text: (tool.content.words || []).map((_, i) => `[BLANK${i + 1}]`).join(' '),
+            answers: tool.content.words || [],
+            explanation: tool.content.explanation || ''
+          }}
+          onSubmit={onSubmit}
+        />
+      );
+
     // Background/notification tools
     case 'save_memory':
     case 'track_progress':
