@@ -4,7 +4,6 @@ import { OllamaClient } from '../ai/OllamaClient';
 import {
   ASSISTANTS,
   FOCUS_TIMEOUT,
-  GREETING_PROMPT,
   MAX_INPUT_LENGTH,
   DEFAULT_OLLAMA_MODEL
 } from '../utils/constants';
@@ -22,6 +21,13 @@ import { TOOL_REFERENCE } from '../utils/toolReference';
 import { getCachedChallenge, cacheChallenge } from '../services/challengeCache';
 
 const API = '/api';
+
+// Pick a random greeting from the companion's greeting variations
+function pickGreeting(assistant) {
+  const greetings = assistant.greetingVariations;
+  if (!greetings || greetings.length === 0) return 'Hello! How can I help you today?';
+  return greetings[Math.floor(Math.random() * greetings.length)];
+}
 
 // Load settings from localStorage
 function loadSettings() {
@@ -205,7 +211,7 @@ export const useStore = create((set, get) => ({
         set({ session, modelDownloadProgress: null, isInitializing: false });
 
         if (availability === 'available') {
-          get().sendMessage(GREETING_PROMPT);
+          get().sendMessage(pickGreeting(assistant));
         }
       } else {
         const available = await OllamaClient.availability();
@@ -215,7 +221,7 @@ export const useStore = create((set, get) => ({
             model: get().selectedOllamaModel
           });
           set({ session, ollamaConnected: true, isInitializing: false });
-          get().sendMessage(GREETING_PROMPT);
+          get().sendMessage(pickGreeting(assistant));
         } else {
           set({ ollamaConnected: false, isProcessing: false, isInitializing: false });
         }
@@ -554,11 +560,16 @@ export const useStore = create((set, get) => ({
     const { selectedAssistantId, isProcessing } = get();
     if (isProcessing) return;
 
+    const assistant = ASSISTANTS[selectedAssistantId];
+    // Pick challenge types based on companion preferences
+    const preferredTypes = assistant?.challengeTypes || ['quiz', 'true_false', 'fill_blank'];
+    const chosenType = preferredTypes[Math.floor(Math.random() * preferredTypes.length)];
+
     // Pick 2-4 random themes
     const themes = pickRandomThemes();
 
     // Check cache first
-    const cacheKey = themes.sort().join(',');
+    const cacheKey = `${chosenType}:${themes.sort().join(',')}`;
     const cached = getCachedChallenge(cacheKey);
 
     if (cached) {
@@ -607,7 +618,8 @@ export const useStore = create((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           companionId: selectedAssistantId,
-          themes
+          themes,
+          challengeType: chosenType
         })
       });
 

@@ -8,15 +8,17 @@ const router = Router();
  * Generate a creative challenge from random themes
  */
 router.post('/generate', async (req, res) => {
-  const { companionId, themes } = req.body;
+  const { companionId, themes, challengeType } = req.body;
 
   // Pick 2-4 random themes (if not provided)
   const selectedThemes = themes || pickRandomThemes(2 + Math.floor(Math.random() * 3));
   const themeList = selectedThemes.slice(0, 4).join('", "');
 
-  // Pick a random game type
-  const gameTypes = getChallengeTypes();
-  const gameType = gameTypes[Math.floor(Math.random() * gameTypes.length)];
+  // Use provided challenge type or pick randomly
+  const gameType = challengeType || (() => {
+    const gameTypes = getChallengeTypes();
+    return gameTypes[Math.floor(Math.random() * gameTypes.length)];
+  })();
 
   const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
   const model = process.env.OLLAMA_DEFAULT_MODEL || 'gemma4:31b-cloud';
