@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import DiceRoller from './DiceRoller';
 import ToolNotification from './ToolNotification';
+import DnDCharacterSheet from './DnDCharacterSheet';
+import DnDSceneCard from './DnDSceneCard';
+import DnDSkillCheck from './DnDSkillCheck';
 
 /**
  * Interactive Quiz Component
@@ -1101,6 +1104,49 @@ function ToolRenderer({ tool, onSubmit }) {
 
     case 'rating':
       return <RatingCard content={tool.content} onSubmit={onSubmit} />;
+
+    // DnD tools
+    case 'dnd_narrative':
+    case 'dnd_dialog':
+    case 'dnd_quest_update':
+    case 'dnd_story_event':
+    case 'dnd_encounter':
+      return <DnDSceneCard content={tool.content || tool} onSubmit={onSubmit} />;
+
+    case 'dnd_skill_check':
+      return <DnDSkillCheck content={tool.content || tool} onSubmit={onSubmit} />;
+
+    case 'dnd_combat':
+    case 'dnd_combat_turn':
+      return <DnDSceneCard content={{
+        title: tool.title || 'Combat',
+        narrative: tool.content?.narrative || tool.content?.description || '',
+        situation: tool.content?.situation || 'Choose your action',
+        choices: tool.content?.actions || tool.content?.choices || []
+      }} onSubmit={onSubmit} />;
+
+    case 'dnd_loot':
+      return <ToolNotification tool={{
+        ...tool,
+        title: tool.title || 'Loot!',
+        content: {
+          message: `Found: ${tool.content?.gold || 0} gold, ${(tool.content?.items || []).join(', ')}, ${tool.content?.xp || 0} XP`
+        }
+      }} />;
+
+    case 'dnd_rest':
+      return <ToolNotification tool={{
+        ...tool,
+        title: tool.title || 'Rest',
+        content: {
+          message: `${tool.content?.type === 'short' ? 'Short' : 'Long'} rest completed. HP recovered: ${tool.content?.hpRecovered || 0}`
+        }
+      }} />;
+
+    case 'dnd_shop':
+    case 'dnd_levelup':
+    case 'dnd_death':
+      return <DnDSceneCard content={tool.content || { title: tool.title, narrative: tool.content?.description || '' }} onSubmit={onSubmit} />;
 
     // Background/notification tools
     case 'save_memory':
