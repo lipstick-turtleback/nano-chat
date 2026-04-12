@@ -1147,6 +1147,35 @@ function ToolRenderer({ tool, onSubmit }) {
     case 'dnd_death':
       return <DnDSceneCard content={tool.content || { title: tool.title, narrative: tool.content?.description || '' }} onSubmit={onSubmit} />;
 
+    // New interactive challenge types
+    case 'hot_take':
+    case 'debate':
+    case 'brainstorm':
+    case 'scenario_builder':
+    case 'memory_lane':
+    case 'quick_win':
+      return <ReflectionCard content={{
+        prompt: tool.content?.statement || tool.content?.topic || tool.content?.prompt || tool.content?.premise || tool.content?.question || tool.content?.task || tool.title,
+        instructions: tool.content?.context || tool.content?.why || tool.content?.question || ''
+      }} onSubmit={onSubmit} />;
+
+    case 'speed_round':
+      return <PollCard content={{
+        question: tool.content?.questions?.[0] || tool.title || 'Quick Question',
+        options: tool.content?.questions?.slice(1, 5) || ['Option A', 'Option B', 'Option C']
+      }} onSubmit={onSubmit} />;
+
+    case 'myth_buster':
+      return tool.content?.myths?.length > 0
+        ? <TrueFalseCard content={{
+            statements: tool.content.myths.map(m => ({
+              text: m.statement,
+              answer: !m.isMyth,
+              explanation: `${m.fact}. ${m.explanation || ''}`
+            }))
+          }} onSubmit={onSubmit} />
+        : <ToolNotification tool={tool} />;
+
     // Background/notification tools
     case 'save_memory':
     case 'track_progress':

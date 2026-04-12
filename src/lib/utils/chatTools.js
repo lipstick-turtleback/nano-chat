@@ -15,7 +15,15 @@ export const TOOL_TYPES = {
   TIMELINE: 'timeline',
   COMPARISON: 'comparison',
   CHECKLIST: 'checklist',
-  RATING: 'rating'
+  RATING: 'rating',
+  HOT_TAKE: 'hot_take',
+  SPEED_ROUND: 'speed_round',
+  MYTH_BUSTER: 'myth_buster',
+  SCENARIO_BUILDER: 'scenario_builder',
+  DEBATE: 'debate',
+  BRAINSTORM: 'brainstorm',
+  MEMORY_LANE: 'memory_lane',
+  QUICK_WIN: 'quick_win'
 };
 
 /**
@@ -267,4 +275,136 @@ export function renderTool(tool) {
     default:
       return null;
   }
+}
+
+// ═══════════════════════════════════════════
+// New Interactive Challenge Types
+// ═══════════════════════════════════════════
+
+/**
+ * Hot Take — Unpopular opinion, user agrees/disagrees with reasoning
+ */
+export function hotTakeTool(data) {
+  return {
+    tool: TOOL_TYPES.HOT_TAKE,
+    title: data.title || 'Hot Take',
+    content: {
+      statement: data.statement,
+      context: data.context || '',
+      question: data.question || 'Do you agree or disagree?'
+    }
+  };
+}
+
+/**
+ * Speed Round — Rapid-fire 3 questions with short answers
+ */
+export function speedRoundTool(data) {
+  return {
+    tool: TOOL_TYPES.SPEED_ROUND,
+    title: data.title || 'Speed Round',
+    content: {
+      questions: data.questions || [
+        'First word that comes to mind?',
+        'Agree or disagree: Practice beats talent.',
+        'What would you do differently?'
+      ],
+      timeHint: data.timeHint || 'Answer in 10 words or less!'
+    }
+  };
+}
+
+/**
+ * Myth Buster — True/false with surprising reveals
+ */
+export function mythBusterTool(data) {
+  return {
+    tool: TOOL_TYPES.MYTH_BUSTER,
+    title: data.title || 'Myth Buster',
+    content: {
+      myths: data.myths || [
+        { statement: 'Common myth', isMyth: true, fact: 'The actual truth', explanation: 'Why people believe it' }
+      ]
+    }
+  };
+}
+
+/**
+ * Scenario Builder — "What if" with branching consequences
+ */
+export function scenarioBuilderTool(data) {
+  return {
+    tool: TOOL_TYPES.SCENARIO_BUILDER,
+    title: data.title || 'What If?',
+    content: {
+      premise: data.premise,
+      branches: data.branches || [
+        { choice: 'Option A', consequence: 'What happens next' },
+        { choice: 'Option B', consequence: 'Different outcome' }
+      ],
+      question: data.question || 'What do you choose?'
+    }
+  };
+}
+
+/**
+ * Debate — Take a position and defend it
+ */
+export function debateTool(data) {
+  return {
+    tool: TOOL_TYPES.DEBATE,
+    title: data.title || 'Debate Time',
+    content: {
+      topic: data.topic,
+      sides: data.sides || { for: 'Supporting argument', against: 'Opposing argument' },
+      question: data.question || 'Which side are you on? Give your best argument.'
+    }
+  };
+}
+
+/**
+ * Brainstorm — Generate ideas together
+ */
+export function brainstormTool(data) {
+  return {
+    tool: TOOL_TYPES.BRAINSTORM,
+    title: data.title || 'Brainstorm',
+    content: {
+      prompt: data.prompt,
+      constraints: data.constraints || [],
+      starterIdeas: data.starterIdeas || [],
+      question: data.question || 'What ideas come to mind?'
+    }
+  };
+}
+
+/**
+ * Memory Lane — Recall past learnings
+ */
+export function memoryLaneTool(data) {
+  return {
+    tool: TOOL_TYPES.MEMORY_LANE,
+    title: data.title || 'Memory Lane',
+    content: {
+      question: data.question || 'What stands out most from what we covered?',
+      hints: data.hints || [],
+      reflection: data.reflection || ''
+    }
+  };
+}
+
+/**
+ * Quick Win — Small actionable task under 2 minutes
+ */
+export function quickWinTool(data) {
+  return {
+    tool: TOOL_TYPES.QUICK_WIN,
+    title: data.title || 'Quick Win',
+    content: {
+      task: data.task,
+      timeEstimate: data.timeEstimate || 'Under 2 minutes',
+      why: data.why || 'Why this matters',
+      done: false
+    }
+  };
 }
