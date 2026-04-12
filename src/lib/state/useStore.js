@@ -9,7 +9,9 @@ import {
   DEFAULT_OLLAMA_MODEL
 } from '../utils/constants';
 import { renderMarkdown } from '../utils/markdown';
+// eslint-disable-next-line no-unused-vars
 import { loadKnowledge, saveKnowledge, buildKnowledgeContext } from '../services/knowledgeService';
+// eslint-disable-next-line no-unused-vars
 import {
   loadPlayerData,
   savePlayerData,

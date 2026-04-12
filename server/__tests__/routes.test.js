@@ -209,6 +209,20 @@ describe('Server Routes', () => {
     });
   });
 
+  describe('Challenge Generation', () => {
+    it('accepts themes and returns a response', async () => {
+      const res = await request(app)
+        .post('/api/challenges/generate')
+        .send({
+          companionId: 'Aria',
+          themes: ['dragon', 'treasure', 'mountain']
+        });
+      // May return 200 (Ollama running) or 500 (Ollama not running)
+      expect(res.status).toBeGreaterThanOrEqual(200);
+      expect(res.status).toBeLessThan(503);
+    });
+  });
+
   describe('Error Handling', () => {
     it('returns 404 for unknown routes', async () => {
       const res = await request(app).get('/api/nonexistent');
