@@ -8,6 +8,7 @@ import ChatInput from './lib/components/ChatInput';
 import RuntimeErrorBanner from './lib/components/RuntimeErrorBanner';
 import ErrorScreen from './lib/components/ErrorScreen';
 import SettingsPanel from './lib/components/SettingsPanel';
+import RightPanel from './lib/components/RightPanel';
 
 function App() {
   const {
@@ -78,6 +79,16 @@ function App() {
         selectedAssistantId={selectedAssistantId}
         onSelect={selectCompanion}
         disabled={isBusy}
+        provider={provider}
+        onProviderChange={switchProvider}
+        ollamaConnected={ollamaConnected}
+        ollamaModels={ollamaModels}
+        selectedOllamaModel={selectedOllamaModel}
+        onModelChange={setSelectedOllamaModel}
+        onRefreshModels={refreshOllamaModels}
+        ollamaLoading={false}
+        onExport={exportChat}
+        hasMessages={messages.length > 0}
       />
 
       <main className="main-chat">
@@ -107,9 +118,17 @@ function App() {
           onSend={handleSend}
           onCancel={cancelRequest}
           isProcessing={isProcessing}
-          maxInputLength={MAX_INPUT_LENGTH}
         />
       </main>
+
+      <RightPanel
+        assistant={assistant}
+        onChallenge={requestChallenge}
+        isProcessing={isProcessing}
+        companionProgress={{}}
+        achievements={[]}
+        memories={{}}
+      />
 
       {showSettings && (
         <SettingsPanel

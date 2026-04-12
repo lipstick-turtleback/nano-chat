@@ -19,8 +19,46 @@ import {
   updateCompanionProgress
 } from '../services/playerStats';
 import { pickRandomThemes } from '../utils/themeEngine';
+import { TOOL_REFERENCE } from '../utils/toolReference';
 
 const API = '/api';
+
+// Load settings from localStorage
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem('lexichat_settings');
+    return raw
+      ? JSON.parse(raw)
+      : {
+          fontSize: 16,
+          speechEngine: 'browser',
+          voiceStyle: 'default',
+          autoSpeak: false,
+          darkMode: false
+        };
+  } catch {
+    return {
+      fontSize: 16,
+      speechEngine: 'browser',
+      voiceStyle: 'default',
+      autoSpeak: false,
+      darkMode: false
+    };
+  }
+}
+
+function saveSettings(settings) {
+  try {
+    localStorage.setItem('lexichat_settings', JSON.stringify(settings));
+  } catch {
+    /* ignore */
+  }
+}
+
+// Build system prompt with tool awareness
+function buildSystemPrompt(assistantDescription) {
+  return `${assistantDescription}\n\n${TOOL_REFERENCE}`;
+}
 
 const nextId = () =>
   typeof crypto !== 'undefined' && crypto.randomUUID
@@ -84,7 +122,7 @@ export const useStore = create((set, get) => ({
   modelDownloadProgress: null,
 
   // Companion
-  selectedAssistantId: 'Aria',
+  selectedAssistantId: 'Mira',
 
   // Chat
   messages: [],
@@ -98,10 +136,12 @@ export const useStore = create((set, get) => ({
   lastCopiedId: null,
 
   // Settings
-  settings: {
-    fontSize: 16
-  },
+  settings: loadSettings(),
   showSettings: false,
+
+  // Tracking
+  messagesThisSession: 0,
+  knowledgeExtracted: false,
 
   // Abort
   abortController: null,
@@ -109,7 +149,7 @@ export const useStore = create((set, get) => ({
   // ─── Actions ───
 
   init: async () => {
-    await get().selectCompanion('Aria');
+    await get().selectCompanion('Mira');
   },
 
   selectCompanion: async (assistantId) => {
@@ -122,7 +162,9 @@ export const useStore = create((set, get) => ({
       runtimeError: null,
       showNoAiError: false,
       modelDownloadProgress: null,
-      isInitializing: true
+      isInitializing: true,
+      messagesThisSession: 0,
+      knowledgeExtracted: false
     });
 
     // Apply theme
@@ -149,7 +191,7 @@ export const useStore = create((set, get) => ({
           availability === 'downloading' ? (p) => set({ modelDownloadProgress: p }) : null;
 
         const session = await ChromePromptClient.createSession({
-          systemPrompt: assistant.description,
+          systemPrompt: buildSystemPrompt(assistant.description),
           onProgress: progressCb
         });
 
@@ -162,7 +204,7 @@ export const useStore = create((set, get) => ({
         const available = await OllamaClient.availability();
         if (available === 'available') {
           const session = await OllamaClient.createSession({
-            systemPrompt: assistant.description,
+            systemPrompt: buildSystemPrompt(assistant.description),
             model: get().selectedOllamaModel
           });
           set({ session, ollamaConnected: true, isInitializing: false });
@@ -359,7 +401,7 @@ export const useStore = create((set, get) => ({
           : `Not quite. ${tool.content?.explanation || ''}`
         : `You got ${result.correctCount || 0}/${result.total || tool.content?.pairs?.length || '?'} right!`;
 
-    // Append a subtle system note to the message for context
+    // Append result to the tool message for display
     set((prev) => {
       const updated = prev.messages.map((m) => {
         if (m.id === messageId) {
@@ -372,6 +414,14 @@ export const useStore = create((set, get) => ({
       });
       return { messages: updated };
     });
+
+    // Send tool result back to AI as a follow-up message
+    const { selectedAssistantId } = get();
+    const assistant = ASSISTANTS[selectedAssistantId];
+    const aiPrompt = `The user just completed a ${tool.tool || 'challenge'}: "${tool.title || 'Challenge'}"\nResult: ${feedback}\nGive brief encouraging feedback. If they did well, praise specifically. If not, encourage them to try again and offer a hint. Keep it to 1-2 sentences.`;
+
+    // Use processRequest to get AI feedback on the tool result
+    get().processRequest(aiPrompt);
   },
 
   // Settings
@@ -384,6 +434,7 @@ export const useStore = create((set, get) => ({
       if (newSettings.fontSize) {
         document.documentElement.style.fontSize = `${newSettings.fontSize}px`;
       }
+      saveSettings(settings);
       return { settings, showSettings: false };
     });
   },
@@ -393,8 +444,8 @@ export const useStore = create((set, get) => ({
     const { selectedAssistantId, isProcessing } = get();
     if (isProcessing) return;
 
-    // Pick 3 random themes
-    const themes = pickRandomThemes(3);
+    // Pick 2-4 random themes
+    const themes = pickRandomThemes();
 
     // Add a "generating..." message
     set({

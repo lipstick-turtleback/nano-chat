@@ -1,12 +1,15 @@
-function ChatInput({ value, onChange, onKeyDown, onSend, onCancel, isProcessing, maxInputLength }) {
+import { useAutoResizeTextarea } from '../hooks/useAutoResizeTextarea';
+
+function ChatInput({ value, onChange, onKeyDown, onSend, onCancel, isProcessing }) {
+  const textareaRef = useAutoResizeTextarea(value, 1, 8);
   const hasText = value.trim().length > 0;
-  const isOverLimit = value.length > maxInputLength;
+  const isOverLimit = value.length > 4000;
 
   return (
     <div className="chat-input-area">
       <div className="chat-input-wrapper">
         <textarea
-          id="chat-input"
+          ref={textareaRef}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={onKeyDown}
@@ -18,13 +21,10 @@ function ChatInput({ value, onChange, onKeyDown, onSend, onCancel, isProcessing,
           className="chat-input"
           rows={1}
           aria-label="Chat message input"
-          disabled={isProcessing}
+          disabled={false}
         />
         <div className="chat-input-actions">
-          <span
-            className={`char-count ${isOverLimit ? 'over-limit' : ''}`}
-            aria-label={`${value.length} characters`}
-          >
+          <span className={`char-count ${isOverLimit ? 'over-limit' : ''}`}>
             {value.length}
           </span>
           {isProcessing ? (
@@ -35,15 +35,15 @@ function ChatInput({ value, onChange, onKeyDown, onSend, onCancel, isProcessing,
               aria-label="Cancel request"
             >
               <svg
-                width="16"
-                height="16"
+                width="18"
+                height="18"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="2.5"
+                strokeWidth="2"
                 aria-hidden="true"
               >
-                <rect x="6" y="6" width="12" height="12" rx="3" />
+                <rect x="6" y="6" width="12" height="12" rx="2" />
               </svg>
             </button>
           ) : (
@@ -51,12 +51,12 @@ function ChatInput({ value, onChange, onKeyDown, onSend, onCancel, isProcessing,
               type="button"
               className="send-btn"
               onClick={onSend}
-              disabled={!hasText || isOverLimit}
+              disabled={!hasText}
               aria-label="Send message"
             >
               <svg
-                width="16"
-                height="16"
+                width="18"
+                height="18"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
