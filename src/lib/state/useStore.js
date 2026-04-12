@@ -17,6 +17,9 @@ import {
 import { pickRandomThemes } from '../utils/themeEngine';
 import { TOOL_REFERENCE } from '../utils/toolReference';
 import { getCachedChallenge, cacheChallenge } from '../services/challengeCache';
+import { rollSkillCheck, startCombat } from '../dnd/combat';
+import { createCampaign, createCharacter } from '../dnd/campaignState';
+import { generateStartingPassives, getPassivesForTrigger, autoRollPassive } from '../dnd/passiveSkills';
 
 const API = '/api';
 
@@ -137,6 +140,10 @@ export const useStore = create((set, get) => ({
   knowledgeExtracted: false,
   companionProgress: null, // Current companion's progress data
 
+  // DnD campaign state (persisted in localStorage)
+  dndCampaign: null,
+  dndCharacter: null,
+
   // Abort
   abortController: null,
 
@@ -156,6 +163,33 @@ export const useStore = create((set, get) => ({
     // Load companion progress
     const companionProgress = getCompanionProgress(assistantId);
 
+    // Initialize DnD campaign if Mira is selected and no campaign exists
+    let dndCampaign = get().dndCampaign;
+    let dndCharacter = get().dndCharacter;
+    if (assistantId === 'Mira' && !dndCampaign) {
+      // Load or create campaign from localStorage
+      try {
+        const raw = localStorage.getItem('lexichat_dnd_campaign');
+        if (raw) {
+          const saved = JSON.parse(raw);
+          dndCampaign = saved.campaign;
+          dndCharacter = saved.character;
+        } else {
+          // Create new campaign with random character
+          const newCampaign = createCampaign();
+          const character = newCampaign.character;
+          // Add passive skills
+          character.passives = generateStartingPassives(character.race);
+          dndCampaign = newCampaign;
+          dndCharacter = character;
+          // Save
+          localStorage.setItem('lexichat_dnd_campaign', JSON.stringify({ campaign: dndCampaign, character: dndCharacter }));
+        }
+      } catch (err) {
+        console.error('Failed to load DnD campaign:', err);
+      }
+    }
+
     set({
       selectedAssistantId: assistantId,
       messages: [],
@@ -165,7 +199,9 @@ export const useStore = create((set, get) => ({
       isInitializing: true,
       messagesThisSession: 0,
       knowledgeExtracted: false,
-      companionProgress // Store for RightPanel
+      companionProgress, // Store for RightPanel
+      dndCampaign,
+      dndCharacter
     });
 
     // Apply theme
@@ -466,6 +502,16 @@ export const useStore = create((set, get) => ({
   handleToolSubmit: async (messageId, tool, result) => {
     const toolType = tool.tool || 'challenge';
 
+    // DnD tools → special dice + passive skills flow
+    const dndTools = [
+      'dnd_narrative', 'dnd_dialog', 'dnd_quest_update', 'dnd_story_event',
+      'dnd_encounter', 'dnd_combat', 'dnd_combat_turn', 'dnd_skill_check',
+      'dnd_loot', 'dnd_rest', 'dnd_shop', 'dnd_levelup', 'dnd_death'
+    ];
+    if (dndTools.includes(toolType)) {
+      return get().handleDnDChoice(messageId, tool, result);
+    }
+
     // Build result text based on tool type
     let userResultText = '';
     let resultSrc = 'req'; // Default: appears as user message
@@ -530,6 +576,126 @@ export const useStore = create((set, get) => ({
         icon: '🌟',
         xpReward: 50
       });
+    }
+  },
+
+  // Handle DnD choice: roll dice → check passives → send to LLM for narrative
+  handleDnDChoice: async (messageId, tool, result) => {
+    const choice = result.choice;
+    const customAction = result.customAction;
+
+    // Determine what to roll
+    let dc = choice?.dc || 10;
+    let modifier = choice?.modifier || 0;
+    let stat = choice?.stat || 'strength';
+
+    // For custom actions, estimate DC based on creativity/difficulty
+    if (customAction) {
+      dc = 12 + Math.floor(Math.random() * 4); // DC 12-15
+      modifier = 0; // Will be filled from character stats
+    }
+
+    // Roll the dice
+    const rollResult = rollSkillCheck(modifier, dc);
+
+    // Check passive skills for bonuses
+    const { dndCharacter } = get();
+    const passives = dndCharacter?.passives || [];
+    const contextTrigger = choice?.type === 'combat' ? 'combat_start' : choice?.type === 'exploration' ? 'explore_environment' : 'always';
+    const activePassives = getPassivesForTrigger(passives, contextTrigger);
+    const passiveResults = activePassives.map(p => autoRollPassive(p, { stat: modifier }));
+
+    // Apply passive bonuses (advantage, info reveals, etc.)
+    let finalResult = { ...rollResult };
+    const passiveNotes = [];
+    for (const pr of passiveResults) {
+      if (pr?.type === 'advantage') {
+        // Reroll with advantage
+        const advRoll = rollSkillCheck(modifier, dc, true, false);
+        finalResult = { ...advRoll };
+        passiveNotes.push(`${pr.passive}: Advantage applied`);
+      } else if (pr?.type === 'info') {
+        passiveNotes.push(`${pr.passive}: ${pr.description}`);
+      } else if (pr?.type === 'boost') {
+        finalResult.total += pr.value;
+        passiveNotes.push(`${pr.passive}: +${pr.value}`);
+      }
+    }
+
+    // Determine outcome text
+    let outcome;
+    if (finalResult.isCrit) {
+      outcome = `CRITICAL SUCCESS! Natural 20! Roll: ${finalResult.roll} + ${modifier} = ${finalResult.total} vs DC ${dc}`;
+    } else if (finalResult.isFumble) {
+      outcome = `CRITICAL FAILURE! Natural 1! Roll: 1 + ${modifier} = ${finalResult.total} vs DC ${dc}`;
+    } else if (finalResult.success) {
+      outcome = `Success! Roll: ${finalResult.roll} + ${modifier} = ${finalResult.total} vs DC ${dc}`;
+    } else {
+      outcome = `Failure. Roll: ${finalResult.roll} + ${modifier} = ${finalResult.total} vs DC ${dc}`;
+    }
+
+    if (passiveNotes.length > 0) {
+      outcome += `\nPassive skills: ${passiveNotes.join('; ')}`;
+    }
+
+    // Build the action text
+    const actionText = customAction || choice?.text || 'Unknown action';
+
+    // Build consequence prompt for LLM
+    const consequence = choice?.consequence || {};
+    const consequenceHint = finalResult.success
+      ? (consequence.success || 'You succeed.')
+      : finalResult.isFumble
+        ? (consequence.failure || 'You fail spectacularly.')
+        : (consequence.partial || 'You partially succeed.');
+
+    // Update tool card with result
+    set((prev) => {
+      const updated = prev.messages.map((m) => {
+        if (m.id === messageId) {
+          return {
+            ...m,
+            toolResult: {
+              tool,
+              result,
+              roll: finalResult,
+              passives: passiveResults,
+              feedback: outcome
+            }
+          };
+        }
+        return m;
+      });
+      return { messages: updated };
+    });
+
+    // Feed result to LLM for narrative continuation
+    const campaign = get().dndCampaign;
+    const character = get().dndCharacter;
+
+    const dndPrompt = `The player chose: "${actionText}"
+
+${customAction ? `Custom action: "${customAction}"` : `Chosen option: ${choice?.text}`}
+
+DICE RESULT:
+${outcome}
+
+CAMPAIGN CONTEXT:
+- Location: ${campaign?.world?.currentLocation || 'Unknown'}
+- HP: ${character?.hp?.current || '?'}/${character?.hp?.max || '?'}
+- AC: ${character?.ac || '?'}
+- Active enemies: ${(campaign?.enemies || []).map(e => `${e.name} (HP: ${e.hp}/${e.maxHp}, AC: ${e.ac})`).join(', ') || 'None'}
+${passiveNotes.length > 0 ? `\nPASSIVE SKILLS TRIGGERED:\n${passiveNotes.join('\n')}` : ''}
+
+CONSEQUENCE GUIDANCE:
+${consequenceHint}
+
+Continue the narrative. Describe the outcome vividly, factoring in the dice roll, passive skills, and current situation. Then present the NEXT scene with 3-4 new choices (A-D). Return your response as normal narrative text — no JSON needed.`;
+
+    try {
+      await get()._streamAiResponse(dndPrompt);
+    } catch (err) {
+      console.error('DnD narrative failed:', err);
     }
   },
 

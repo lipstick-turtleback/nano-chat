@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { loadPlayerData } from '../services/playerStats';
+import DnDCharacterSheet from './DnDCharacterSheet';
 
 /**
  * Right Panel — Persistent widgets next to the chat
@@ -9,7 +10,9 @@ function RightPanel({
   assistant,
   onChallenge,
   companionProgress,
-  isProcessing
+  isProcessing,
+  dndCampaign,
+  dndCharacter
 }) {
   const achievements = useMemo(() => {
     const data = loadPlayerData();
@@ -32,7 +35,7 @@ function RightPanel({
       <div className="right-panel-widgets">
         <ProgressWidget progress={companionProgress} />
         <AchievementsWidget achievements={achievements} />
-        {assistant?.category === 'gaming' && <DnDWidget />}
+        {dndCharacter && <DnDCharacterSheet character={dndCharacter} />}
       </div>
     </aside>
   );
@@ -120,7 +123,6 @@ function AchievementsWidget({ achievements }) {
   }
 
   const unlocked = achievements.filter((a) => a.earnedAt);
-  const locked = achievements.filter((a) => !a.earnedAt);
 
   return (
     <div className="widget">
@@ -143,20 +145,6 @@ function AchievementsWidget({ achievements }) {
       {unlocked.length > 5 && (
         <p className="widget-empty">+{unlocked.length - 5} more unlocked</p>
       )}
-    </div>
-  );
-}
-
-/**
- * DnD Panel Widget (only for Mira)
- */
-function DnDWidget() {
-  return (
-    <div className="widget">
-      <h3 className="widget-title">⚔️ DnD</h3>
-      <p className="widget-empty">
-        Start a DnD adventure with Mira to see your character sheet, inventory, and quest log here.
-      </p>
     </div>
   );
 }

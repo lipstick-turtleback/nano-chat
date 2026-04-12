@@ -75,6 +75,8 @@ function App() {
     settings,
     showSettings,
     companionProgress,
+    dndCampaign,
+    dndCharacter,
     init,
     selectCompanion,
     switchProvider,
@@ -178,6 +180,8 @@ function App() {
         onChallenge={requestChallenge}
         isProcessing={isProcessing}
         companionProgress={companionProgress || {}}
+        dndCampaign={dndCampaign}
+        dndCharacter={dndCharacter}
       />
 
       {showSettings && (
