@@ -1,23 +1,8 @@
-import { useState, useEffect } from 'react';
-
 /**
- * Renders notifications for background tools (save_memory, track_progress, etc.)
- * Shows a brief notification that auto-dismisses.
+ * Renders permanent system event notifications in chat.
+ * Memories saved, loot acquired, achievements unlocked — these STAY visible.
  */
-function ToolNotification({ tool, duration = 3000 }) {
-  const [visible, setVisible] = useState(true);
-  const [fading, setFading] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setFading(true);
-      setTimeout(() => setVisible(false), 300);
-    }, duration);
-    return () => clearTimeout(timer);
-  }, [duration]);
-
-  if (!visible) return null;
-
+function ToolNotification({ tool }) {
   const iconMap = {
     save_memory: '💾',
     track_progress: '📊',
@@ -26,15 +11,18 @@ function ToolNotification({ tool, duration = 3000 }) {
     storage_view: '📋',
     storage_set: '💾',
     info: 'ℹ️',
-    warning: '⚠️'
+    warning: '⚠️',
+    dnd_loot: '💰',
+    dnd_rest: '🏕️',
+    dnd_quest_update: '📜'
   };
 
   const icon = iconMap[tool.tool] || '📌';
-  const title = tool.title || 'Tool Executed';
-  const description = tool.content?.message || tool.content?.text || '';
+  const title = tool.title || tool.content?.title || 'Event';
+  const description = tool.content?.message || tool.content?.text || tool.content?.description || '';
 
   return (
-    <div className={`tool-notification ${fading ? 'fading' : ''}`}>
+    <div className="tool-notification system-event">
       <span className="notification-icon">{icon}</span>
       <div className="notification-content">
         <span className="notification-title">{title}</span>

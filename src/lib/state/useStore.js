@@ -10,8 +10,6 @@ import {
 import { renderMarkdown } from '../utils/markdown';
 import { loadKnowledge, saveKnowledge, buildKnowledgeContext } from '../services/knowledgeService';
 import {
-  loadPlayerData,
-  savePlayerData,
   getCompanionProgress,
   updateCompanionProgress,
   addAchievement
@@ -53,11 +51,6 @@ function saveSettings(settings) {
   } catch {
     /* ignore */
   }
-}
-
-// Build system prompt with tool awareness
-function buildSystemPrompt(assistantDescription) {
-  return `${assistantDescription}\n\n${TOOL_REFERENCE}`;
 }
 
 const nextId = () =>

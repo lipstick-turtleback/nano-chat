@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import DiceRoller from './DiceRoller';
 import ToolNotification from './ToolNotification';
-import DnDCharacterSheet from './DnDCharacterSheet';
 import DnDSceneCard from './DnDSceneCard';
 import DnDSkillCheck from './DnDSkillCheck';
 

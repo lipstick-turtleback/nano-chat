@@ -1,7 +1,6 @@
 import { useEffect, useMemo } from 'react';
-import { ASSISTANTS, MAX_INPUT_LENGTH } from './lib/utils/constants';
+import { ASSISTANTS } from './lib/utils/constants';
 import { useStore } from './lib/state/useStore';
-import { loadPlayerData } from './lib/services/playerStats';
 import Sidebar from './lib/components/Sidebar';
 import ChatHeader from './lib/components/ChatHeader';
 import ChatArea from './lib/components/ChatArea';

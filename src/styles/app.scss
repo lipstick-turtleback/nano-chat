@@ -1293,13 +1293,13 @@ body {
   resize: none;
   background: transparent;
   font-family: inherit;
-  font-size: 0.875rem;
-  line-height: 1.5;
+  font-size: 0.9rem;
+  line-height: 1.55;
   color: var(--text-primary);
-  min-height: 21px;
+  min-height: 42px;
   max-height: none;
-  overflow: hidden;
-  padding: 0;
+  overflow-y: hidden;
+  padding: 12px 16px;
   margin: 0;
 
   &::placeholder {
@@ -2127,10 +2127,14 @@ body {
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  background: var(--bg-hover);
   border-radius: var(--r-sm);
   margin-top: 8px;
-  animation: slide-in 250ms var(--t-smooth);
+
+  &.system-event {
+    background: var(--bg-hover);
+    border: 1px dashed var(--border-light);
+    animation: slide-in 250ms var(--t-smooth);
+  }
 
   &.fading {
     opacity: 0;
@@ -2148,16 +2152,17 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  gap: 1px;
 }
 
 .notification-title {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .notification-desc {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--text-secondary);
   line-height: 1.3;
 }

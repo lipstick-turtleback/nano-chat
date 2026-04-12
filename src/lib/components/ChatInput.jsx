@@ -2,7 +2,7 @@ import { useAutoResizeTextarea } from '../hooks/useAutoResizeTextarea';
 import { useEffect, useRef } from 'react';
 
 function ChatInput({ value, onChange, onKeyDown, onSend, onCancel, isProcessing, activeTool, toolHint }) {
-  const textareaRef = useAutoResizeTextarea(value, 1, 8);
+  const textareaRef = useAutoResizeTextarea(value, 2, 8);
   const hasText = value.trim().length > 0;
   const isOverLimit = value.length > 4000;
   const prevToolRef = useRef(null);
@@ -41,7 +41,6 @@ function ChatInput({ value, onChange, onKeyDown, onSend, onCancel, isProcessing,
               : toolHint || 'Type your message... Enter to send, Shift+Enter for new line.'
           }
           className="chat-input"
-          rows={1}
           aria-label="Chat message input"
           disabled={false}
         />

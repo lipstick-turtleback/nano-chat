@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { loadPlayerData } from '../services/playerStats';
 
 /**
@@ -11,12 +11,9 @@ function RightPanel({
   companionProgress,
   isProcessing
 }) {
-  const [achievements, setAchievements] = useState([]);
-
-  // Load achievements from player data
-  useEffect(() => {
+  const achievements = useMemo(() => {
     const data = loadPlayerData();
-    setAchievements(data?.achievements || []);
+    return data?.achievements || [];
   }, [assistant?.id]);
 
   return (

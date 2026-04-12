@@ -34,8 +34,9 @@ function saveCache(cache) {
 }
 
 /**
- * Generate a stable cache key from themes
+ * Generate a stable cache key from themes (reserved for future keyed caching)
  */
+// eslint-disable-next-line no-unused-vars
 function makeCacheKey(themes) {
   const sorted = [...themes].sort().join('+');
   return sorted;
