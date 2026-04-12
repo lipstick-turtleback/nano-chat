@@ -418,36 +418,74 @@ export const useStore = create((set, get) => ({
   dismissError: () => set({ runtimeError: null }),
 
   // Handle interactive tool submission (quiz answer, etc.)
-  handleToolSubmit: (messageId, tool, result) => {
-    // Log result for future knowledge compression
-    const feedback =
-      result.isCorrect !== undefined
-        ? result.isCorrect
-          ? '🎉 Correct!'
-          : `Not quite. ${tool.content?.explanation || ''}`
-        : `You got ${result.correctCount || 0}/${result.total || tool.content?.pairs?.length || '?'} right!`;
+  handleToolSubmit: async (messageId, tool, result) => {
+    const toolType = tool.tool || 'challenge';
 
-    // Append result to the tool message for display
+    // Build result text based on tool type
+    let userResultText = '';
+    let resultSrc = 'req'; // Default: appears as user message
+
+    // For choice-based tools, use subtle info message (not a user bubble)
+    if (toolType === 'would_you_rather' || toolType === 'poll') {
+      resultSrc = 'info';
+      const chosen = result.option || `Option ${result.selected !== undefined ? (result.selected === 0 ? 'A' : 'B') : '?'}`;
+      userResultText = `Chose: ${chosen}`;
+    } else if (result.isCorrect !== undefined) {
+      userResultText = result.isCorrect
+        ? `✅ Correct: ${tool.content?.prompt || tool.title || 'Challenge'}`
+        : `❌ Not quite — ${tool.content?.explanation || ''}`;
+    } else if (result.correctCount !== undefined) {
+      const total = result.total || tool.content?.pairs?.length || '?';
+      userResultText = result.correctCount === total
+        ? `🎉 Perfect score: ${result.correctCount}/${total}!`
+        : `📊 Scored ${result.correctCount}/${total}`;
+    } else if (result.text) {
+      userResultText = `📝 "${result.text.slice(0, 150)}${result.text.length > 150 ? '...' : ''}"`;
+    } else if (result.rating) {
+      userResultText = `⭐ Rated ${result.rating}/5 stars`;
+    } else {
+      userResultText = `✅ Completed: ${tool.title || 'Challenge'}`;
+    }
+
+    // Update the tool card with result state
     set((prev) => {
       const updated = prev.messages.map((m) => {
         if (m.id === messageId) {
-          return {
-            ...m,
-            toolResult: { tool, result, feedback }
-          };
+          return { ...m, toolResult: { tool, result, feedback: userResultText } };
         }
         return m;
       });
-      return { messages: updated };
+
+      // For choice tools, don't add a separate message bubble — just update the card
+      // For other tools, add a visible result message
+      if (toolType === 'would_you_rather' || toolType === 'poll') {
+        return { messages: updated };
+      }
+
+      const resultMsg = createMessageObj(userResultText, resultSrc);
+      return { messages: [...updated, resultMsg] };
     });
 
-    // Send tool result back to AI as a follow-up message
-    const { selectedAssistantId } = get();
-    const assistant = ASSISTANTS[selectedAssistantId];
-    const aiPrompt = `The user just completed a ${tool.tool || 'challenge'}: "${tool.title || 'Challenge'}"\nResult: ${feedback}\nGive brief encouraging feedback. If they did well, praise specifically. If not, encourage them to try again and offer a hint. Keep it to 1-2 sentences.`;
+    // Send tool result to AI for personalized feedback
+    const feedbackPrompt = `The user just completed a "${toolType}": "${tool.title || 'Challenge'}"\nTheir result: ${userResultText}\n\nGive 1-2 sentences of personalized feedback. If they did well, celebrate specifically. If not, encourage them and offer a hint. Keep it warm and natural.`;
 
-    // Use processRequest to get AI feedback on the tool result
-    get().processRequest(aiPrompt);
+    try {
+      await get().sendMessage(feedbackPrompt);
+    } catch (err) {
+      console.error('Tool feedback failed:', err);
+    }
+
+    // Award achievement for first challenge completion
+    if (!['save_memory', 'track_progress', 'storage_view', 'storage_set'].includes(toolType)) {
+      addAchievement({
+        id: 'first_challenge',
+        name: 'First Steps',
+        description: 'Complete your first challenge',
+        category: 'challenges',
+        icon: '🌟',
+        xpReward: 50
+      });
+    }
   },
 
   // Settings

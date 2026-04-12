@@ -512,11 +512,15 @@ function WouldYouRatherCard({ content, onSubmit }) {
   const [selected, setSelected] = useState(null);
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = () => {
-    if (!selected) return;
+  const handleSubmit = (choiceIndex) => {
+    if (submitted) return;
     setSubmitted(true);
-    onSubmit?.({ selected });
+    setSelected(choiceIndex);
+    onSubmit?.({ selected: choiceIndex, option: content.options?.[choiceIndex] || content[`option${choiceIndex === 0 ? 'A' : 'B'}`] });
   };
+
+  const optionA = content.optionA || content.options?.[0] || 'Option A';
+  const optionB = content.optionB || content.options?.[1] || 'Option B';
 
   return (
     <div className="tool-card wyr-card">
@@ -528,36 +532,30 @@ function WouldYouRatherCard({ content, onSubmit }) {
       <div className="wyr-options">
         <button
           type="button"
-          className={`wyr-option ${selected === 0 ? 'selected' : ''} ${submitted ? 'disabled' : ''}`}
-          onClick={() => !submitted && setSelected(0)}
+          className={`wyr-option ${submitted && selected === 0 ? 'chosen' : ''} ${submitted && selected !== 0 ? 'faded' : ''}`}
+          onClick={() => handleSubmit(0)}
+          disabled={submitted}
         >
           <span className="wyr-letter">A</span>
-          {content.optionA}
+          {optionA}
+          {submitted && selected === 0 && <span className="wyr-chosen-badge">✓ Your Choice</span>}
         </button>
-        <div className="wyr-or">OR</div>
+        <div className="wyr-or">— OR —</div>
         <button
           type="button"
-          className={`wyr-option ${selected === 1 ? 'selected' : ''} ${submitted ? 'disabled' : ''}`}
-          onClick={() => !submitted && setSelected(1)}
+          className={`wyr-option ${submitted && selected === 1 ? 'chosen' : ''} ${submitted && selected !== 1 ? 'faded' : ''}`}
+          onClick={() => handleSubmit(1)}
+          disabled={submitted}
         >
           <span className="wyr-letter">B</span>
-          {content.optionB}
+          {optionB}
+          {submitted && selected === 1 && <span className="wyr-chosen-badge">✓ Your Choice</span>}
         </button>
       </div>
 
-      {!submitted ? (
-        <button
-          type="button"
-          className="quiz-submit-btn"
-          onClick={handleSubmit}
-          disabled={!selected}
-        >
-          Choose
-        </button>
-      ) : (
+      {submitted && content.explanation && (
         <div className="quiz-explanation">
-          <strong>You chose: {selected === 0 ? content.optionA : content.optionB}</strong>
-          {content.explanation && <p>{content.explanation}</p>}
+          <em>{content.explanation}</em>
         </div>
       )}
     </div>

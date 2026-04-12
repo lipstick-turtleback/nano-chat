@@ -1,6 +1,35 @@
+import { useMemo } from 'react';
 import ChatMessage from './ChatMessage';
 
-function ChatArea({ messages, assistant, onCopy, lastCopiedId, onToolSubmit, onRequestChallenge }) {
+/**
+ * Check if the last assistant message has an unsubmitted tool.
+ */
+function getLastActiveTool(messages) {
+  if (!messages || messages.length === 0) return null;
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.src !== 'resp' || !msg.text) continue;
+
+    try {
+      const jsonMatch = msg.text.match(/\{[\s\S]*"tool"\s*:[\s\S]*\}/);
+      if (jsonMatch) {
+        const tool = JSON.parse(jsonMatch[0]);
+        // Tool is "active" if it hasn't been submitted yet
+        if (!msg.toolResult) {
+          return tool;
+        }
+      }
+    } catch {
+      // Not a tool message
+    }
+  }
+  return null;
+}
+
+function ChatArea({ messages, assistant, onCopy, lastCopiedId, onToolSubmit }) {
+  const activeTool = useMemo(() => getLastActiveTool(messages), [messages]);
+
   return (
     <div
       id="chat-container"
@@ -8,6 +37,7 @@ function ChatArea({ messages, assistant, onCopy, lastCopiedId, onToolSubmit, onR
       aria-live="polite"
       aria-relevant="additions text"
       aria-label="Chat messages"
+      data-active-tool={activeTool?.tool || ''}
     >
       {messages.length === 0 && (
         <div className="empty-chat-state">
@@ -17,11 +47,6 @@ function ChatArea({ messages, assistant, onCopy, lastCopiedId, onToolSubmit, onR
           <p className="empty-chat-text">
             Start a conversation with <strong>{assistant?.shortName || 'your companion'}</strong>
           </p>
-          {onRequestChallenge && (
-            <button type="button" className="challenge-btn-empty" onClick={onRequestChallenge}>
-              🎲 Generate a Challenge
-            </button>
-          )}
         </div>
       )}
 
@@ -35,14 +60,6 @@ function ChatArea({ messages, assistant, onCopy, lastCopiedId, onToolSubmit, onR
           onToolSubmit={onToolSubmit}
         />
       ))}
-
-      {messages.length > 0 && onRequestChallenge && (
-        <div className="challenge-bar">
-          <button type="button" className="challenge-btn" onClick={onRequestChallenge}>
-            🎲 Generate a Creative Challenge
-          </button>
-        </div>
-      )}
     </div>
   );
 }

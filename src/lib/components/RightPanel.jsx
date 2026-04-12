@@ -1,33 +1,23 @@
 import { useState, useEffect } from 'react';
+import { loadPlayerData } from '../services/playerStats';
 
 /**
  * Right Panel — Persistent widgets next to the chat
- * Shows: Challenge button, progress tracker, achievements, memories, DnD panel
+ * All widgets stacked vertically so everything is visible at a glance
  */
 function RightPanel({
   assistant,
   onChallenge,
   companionProgress,
-  achievements,
-  memories,
   isProcessing
 }) {
-  const [activeTab, setActiveTab] = useState('progress');
-  const [expandedSections, setExpandedSections] = useState({});
+  const [achievements, setAchievements] = useState([]);
 
-  const tabs = [
-    { id: 'progress', icon: '📊', label: 'Progress' },
-    { id: 'achievements', icon: '🏆', label: 'Achievements' },
-    { id: 'memories', icon: '💾', label: 'Memories' }
-  ];
-
-  if (assistant?.category === 'gaming') {
-    tabs.push({ id: 'dnd', icon: '⚔️', label: 'DnD' });
-  }
-
-  const toggleSection = (section) => {
-    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
-  };
+  // Load achievements from player data
+  useEffect(() => {
+    const data = loadPlayerData();
+    setAchievements(data?.achievements || []);
+  }, [assistant?.id]);
 
   return (
     <aside className="right-panel">
@@ -38,34 +28,14 @@ function RightPanel({
         onClick={onChallenge}
         disabled={isProcessing}
       >
-        🎲 Generate Challenge
+        🎲 Surprise Me
       </button>
 
-      {/* Tabs */}
-      <div className="right-panel-tabs">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            className={`right-panel-tab ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            <span className="tab-icon">{tab.icon}</span>
-            <span className="tab-label">{tab.label}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Tab Content */}
-      <div className="right-panel-content">
-        {activeTab === 'progress' && <ProgressWidget progress={companionProgress} />}
-        {activeTab === 'achievements' && (
-          <AchievementsWidget achievements={achievements} />
-        )}
-        {activeTab === 'memories' && (
-          <MemoriesWidget memories={memories} />
-        )}
-        {activeTab === 'dnd' && <DnDWidget />}
+      {/* Widgets stacked vertically */}
+      <div className="right-panel-widgets">
+        <ProgressWidget progress={companionProgress} />
+        <AchievementsWidget achievements={achievements} />
+        {assistant?.category === 'gaming' && <DnDWidget />}
       </div>
     </aside>
   );
@@ -74,12 +44,22 @@ function RightPanel({
 /**
  * Progress Tracker Widget
  */
-function ProgressWidget({ progress = {} }) {
+function ProgressWidget({ progress }) {
+  if (!progress) {
+    return (
+      <div className="widget">
+        <h3 className="widget-title">📊 Progress</h3>
+        <p className="widget-empty">Start chatting to track progress!</p>
+      </div>
+    );
+  }
+
   const {
     sessionsCompleted = 0,
     streakDays = 0,
     level = 'beginner',
-    skills = {}
+    skills = {},
+    totalMessages = 0
   } = progress;
 
   const skillsList = Object.entries(skills);
@@ -98,6 +78,10 @@ function ProgressWidget({ progress = {} }) {
           <span className="stat-value">
             {streakDays > 0 ? `🔥 ${streakDays} days` : '—'}
           </span>
+        </div>
+        <div className="stat-row">
+          <span className="stat-label">Messages</span>
+          <span className="stat-value">{totalMessages}</span>
         </div>
         <div className="stat-row">
           <span className="stat-label">Level</span>
@@ -129,21 +113,27 @@ function ProgressWidget({ progress = {} }) {
 /**
  * Achievements Widget
  */
-function AchievementsWidget({ achievements = [] }) {
-  const unlocked = achievements.filter((a) => a.unlocked);
-  const locked = achievements.filter((a) => !a.unlocked);
+function AchievementsWidget({ achievements }) {
+  if (!achievements || !Array.isArray(achievements)) {
+    return null;
+  }
+
+  if (achievements.length === 0) {
+    return null;
+  }
+
+  const unlocked = achievements.filter((a) => a.earnedAt);
+  const locked = achievements.filter((a) => !a.earnedAt);
 
   return (
     <div className="widget">
-      <h3 className="widget-title">
-        🏆 Achievements ({unlocked.length}/{achievements.length})
-      </h3>
+      <h3 className="widget-title">🏆 Achievements ({unlocked.length})</h3>
 
       {unlocked.length === 0 && (
-        <p className="widget-empty">No achievements yet. Complete challenges to unlock them!</p>
+        <p className="widget-empty">Complete challenges to unlock achievements!</p>
       )}
 
-      {unlocked.map((a) => (
+      {unlocked.slice(0, 5).map((a) => (
         <div key={a.id} className="achievement unlocked">
           <span className="achievement-icon">{a.icon}</span>
           <div className="achievement-info">
@@ -153,49 +143,9 @@ function AchievementsWidget({ achievements = [] }) {
         </div>
       ))}
 
-      {locked.length > 0 && (
-        <button
-          type="button"
-          className="show-locked-btn"
-          onClick={() => {}}
-        >
-          Show Locked ({locked.length})
-        </button>
+      {unlocked.length > 5 && (
+        <p className="widget-empty">+{unlocked.length - 5} more unlocked</p>
       )}
-    </div>
-  );
-}
-
-/**
- * Saved Memories Widget (key-value store)
- */
-function MemoriesWidget({ memories = {} }) {
-  const categories = Object.entries(memories);
-
-  if (categories.length === 0) {
-    return (
-      <div className="widget">
-        <h3 className="widget-title">💾 Memories</h3>
-        <p className="widget-empty">
-          No memories saved yet. Your companion will start remembering things about you as you chat.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="widget">
-      <h3 className="widget-title">💾 Memories</h3>
-      {categories.map(([category, items]) => (
-        <div key={category} className="memory-category">
-          <h4 className="memory-category-title">{category}</h4>
-          <ul className="memory-list">
-            {items.map((item, i) => (
-              <li key={i} className="memory-item">{item}</li>
-            ))}
-          </ul>
-        </div>
-      ))}
     </div>
   );
 }

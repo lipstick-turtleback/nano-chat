@@ -1,12 +1,34 @@
 import { useAutoResizeTextarea } from '../hooks/useAutoResizeTextarea';
+import { useEffect, useRef } from 'react';
 
-function ChatInput({ value, onChange, onKeyDown, onSend, onCancel, isProcessing }) {
+function ChatInput({ value, onChange, onKeyDown, onSend, onCancel, isProcessing, activeTool, toolHint }) {
   const textareaRef = useAutoResizeTextarea(value, 1, 8);
   const hasText = value.trim().length > 0;
   const isOverLimit = value.length > 4000;
+  const prevToolRef = useRef(null);
+
+  // Auto-focus when a text-input tool appears
+  useEffect(() => {
+    const textTools = ['riddle', 'fill_blank', 'reflection', 'word_ladder', 'emoji_pictionary', 'emoji_pict', 'anagram', 'reorder'];
+    if (activeTool && textTools.includes(activeTool.tool) && activeTool.tool !== prevToolRef.current) {
+      // Brief delay so the tool card renders, then focus the main input as fallback hint
+      const t = setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 200);
+      return () => clearTimeout(t);
+    }
+    prevToolRef.current = activeTool?.tool || null;
+  }, [activeTool, textareaRef]);
 
   return (
     <div className="chat-input-area">
+      {/* Active tool hint banner */}
+      {activeTool && !isProcessing && (
+        <div className="tool-hint-banner">
+          <span className="tool-hint-icon">👆</span>
+          <span className="tool-hint-text">{toolHint || 'Interact with the challenge above'}</span>
+        </div>
+      )}
       <div className="chat-input-wrapper">
         <textarea
           ref={textareaRef}
@@ -16,7 +38,7 @@ function ChatInput({ value, onChange, onKeyDown, onSend, onCancel, isProcessing 
           placeholder={
             isProcessing
               ? 'Waiting for response...'
-              : 'Type your message... Enter to send, Shift+Enter for new line.'
+              : toolHint || 'Type your message... Enter to send, Shift+Enter for new line.'
           }
           className="chat-input"
           rows={1}

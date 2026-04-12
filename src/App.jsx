@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { ASSISTANTS, MAX_INPUT_LENGTH } from './lib/utils/constants';
 import { useStore } from './lib/state/useStore';
 import { loadPlayerData } from './lib/services/playerStats';
@@ -10,6 +10,53 @@ import RuntimeErrorBanner from './lib/components/RuntimeErrorBanner';
 import ErrorScreen from './lib/components/ErrorScreen';
 import SettingsPanel from './lib/components/SettingsPanel';
 import RightPanel from './lib/components/RightPanel';
+
+/**
+ * Detect if the last assistant message has an unsubmitted tool.
+ */
+function getActiveTool(messages) {
+  if (!messages || messages.length === 0) return null;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.src !== 'resp' || !msg.text || msg.toolResult) continue;
+    try {
+      const jsonMatch = msg.text.match(/\{[\s\S]*"tool"\s*:[\s\S]*\}/);
+      if (jsonMatch) return JSON.parse(jsonMatch[0]);
+    } catch { /* not a tool */ }
+  }
+  return null;
+}
+
+/** Friendly hint for the input placeholder based on active tool */
+function getToolHint(tool) {
+  if (!tool) return '';
+  const hints = {
+    quiz: 'Answer the quiz above ↑',
+    true_false: 'Answer the true/false questions above ↑',
+    fill_blank: 'Fill in the blanks above ↑',
+    word_match: 'Match the words above ↑',
+    riddle: 'Type your guess in the riddle above ↑',
+    word_ladder: 'Solve the word ladder above ↑',
+    emoji_pictionary: 'Guess the emoji puzzle above ↑',
+    emoji_pict: 'Guess the emoji puzzle above ↑',
+    would_you_rather: 'Choose an option above ↑',
+    dice_roll: 'Click the dice above to roll ↑',
+    two_truths_lie: 'Find the lie in the statements above ↑',
+    sequence: 'Complete the sequence above ↑',
+    anagram: 'Unscramble the word above ↑',
+    reorder: 'Reorder the sentence above ↑',
+    reflection: 'Write your reflection above ↑',
+    poll: 'Vote in the poll above ↑',
+    word_of_day: 'Click to reveal the word above ↑',
+    checklist: 'Check off items above ↑',
+    rating: 'Rate using the stars above ↑',
+    comparison: 'Review the comparison above ↑',
+    timeline: 'Review the timeline above ↑',
+    code: 'Review the code above ↑',
+    progress: 'Review the progress above ↑'
+  };
+  return hints[tool.tool] || 'Interact with the challenge above ↑';
+}
 
 function App() {
   const {
@@ -71,6 +118,9 @@ function App() {
   const assistant = ASSISTANTS[selectedAssistantId];
   const isBusy = isInitializing || isProcessing;
 
+  const activeTool = useMemo(() => getActiveTool(messages), [messages]);
+  const toolHint = useMemo(() => getToolHint(activeTool), [activeTool]);
+
   if (showNoAiError) {
     return <ErrorScreen />;
   }
@@ -110,7 +160,6 @@ function App() {
           onCopy={copyMessage}
           lastCopiedId={lastCopiedId}
           onToolSubmit={handleToolSubmit}
-          onRequestChallenge={requestChallenge}
         />
 
         <ChatInput
@@ -120,6 +169,8 @@ function App() {
           onSend={handleSend}
           onCancel={cancelRequest}
           isProcessing={isProcessing}
+          activeTool={activeTool}
+          toolHint={toolHint}
         />
       </main>
 
@@ -127,9 +178,7 @@ function App() {
         assistant={assistant}
         onChallenge={requestChallenge}
         isProcessing={isProcessing}
-        companionProgress={companionProgress}
-        achievements={loadPlayerData()?.achievements || []}
-        memories={{}}
+        companionProgress={companionProgress || {}}
       />
 
       {showSettings && (

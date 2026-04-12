@@ -51,13 +51,31 @@ function ChatMessage({ message, assistant, onCopy, lastCopiedId, onToolSubmit })
 
   const isUser = message.src === 'req';
   const isError = message.src === 'error';
+  const isInfo = message.src === 'info';
   const isProcessing = message.text === 'processing...';
 
-  const bubbleClass = isUser ? 'user-bubble' : isError ? 'error-bubble' : 'assistant-bubble';
-  const wrapperClass = isUser ? 'user' : isError || isProcessing ? 'error' : 'assistant';
+  let bubbleClass, wrapperClass, avatar, senderName;
 
-  const avatar = isUser ? '👤' : isError ? '⚠️' : assistant?.emoji || '🤖';
-  const senderName = isError ? 'Error' : assistant?.name || 'Assistant';
+  if (isUser) {
+    bubbleClass = 'user-bubble';
+    wrapperClass = 'user';
+    avatar = '👤';
+  } else if (isError) {
+    bubbleClass = 'error-bubble';
+    wrapperClass = 'error';
+    avatar = '⚠️';
+    senderName = 'Error';
+  } else if (isInfo) {
+    bubbleClass = 'info-bubble';
+    wrapperClass = 'info';
+    avatar = '📌';
+    senderName = '';
+  } else {
+    bubbleClass = 'assistant-bubble';
+    wrapperClass = 'assistant';
+    avatar = assistant?.emoji || '🤖';
+    senderName = assistant?.name || 'Assistant';
+  }
 
   return (
     <div className={`message-wrapper ${wrapperClass}`}>
