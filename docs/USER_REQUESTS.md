@@ -90,7 +90,6 @@
 - "use eslint v9.39.4"
 - "use biome 2.4.11"
 - "remove any svelte related leftovers"
-- "use kokoro-js to generate speech for any chat message"
 - "return the prettier and eslint checks and mainstream js configs and settings and plugins"
 - "remove any svelte related leftovers"
 - "of course improve overall app layout/texts/usability/alignments/paddings/margins just make sure everything is usable and sane"
@@ -124,7 +123,6 @@
 - [x] SCSS styling with design tokens
 - [x] ESLint 9.39.4 + Prettier + Biome 2.4.11
 - [x] Vite 7.3.2
-- [x] Kokoro-js TTS integration (audio playback)
 - [x] 10 personal-development companions (Aria, Kai, Nova, Sage, Pixel, Atlas, Luna, Zen, Hera, Aino)
 - [x] Aino — Finnish A1 → B1 tutor with full curriculum
 - [x] Interactive quiz tools (Quiz, T/F, Fill-Blank, Word Match)

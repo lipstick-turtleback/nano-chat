@@ -5,7 +5,6 @@
 
 ## Goal
 
-Add Express.js backend to handle heavy tasks: Ollama proxy, TTS generation, game engine, caching, and SQLite persistence.
 
 ## Architecture Changes
 
@@ -13,7 +12,6 @@ Add Express.js backend to handle heavy tasks: Ollama proxy, TTS generation, game
 
 ```
 Browser → Direct Ollama (localhost:11434)
-Browser → Kokoro-js TTS (client-side WASM)
 Browser → localStorage (player stats)
 ```
 
@@ -24,7 +22,6 @@ Browser → Express API (localhost:3001)
                     ↓
               Ollama proxy → localhost:11434 (via env config)
                     ↓
-              TTS generation → Kokoro-js (server-side)
                     ↓
               Game engine → DnD, quizzes, challenges
                     ↓
@@ -63,19 +60,12 @@ Browser → Express API (localhost:3001)
   - `companion_progress` — player_id, companion_id, sessions, streak, level, data (JSON)
   - `game_sessions` — id, player_id, game_type, state (JSON), created_at
   - `dnd_characters` — id, player_id, name, class, level, stats (JSON), story_data (JSON)
-  - `tts_cache` — hash, voice, text_hash, audio_path, created_at
   - `knowledge_store` — player_id, companion_id, key, value, updated_at
   - `chat_sessions` — id, player_id, companion_id, messages (JSON), created_at
 - [ ] Create `server/models/` — query helpers
 - [ ] Migrate localStorage data to SQLite (optional, client can sync)
 
-### Phase D: TTS Server Endpoint
 
-- [ ] `server/routes/tts.js`
-  - `POST /api/tts/generate` — generate speech audio
-  - `GET /api/tts/voices` — list available Kokoro voices
-  - `GET /api/tts/cache/:hash` — serve cached audio
-- [ ] Server-side Kokoro-js (only loaded once, shared across requests)
 - [ ] Audio file caching (avoid regenerating same text)
 - [ ] Client fetches audio blob URL instead of generating locally
 
@@ -106,7 +96,6 @@ Browser → Express API (localhost:3001)
 
 - [ ] Update `useStore.js` — call `/api/*` instead of direct calls
 - [ ] Update `OllamaClient.js` → calls `/api/ollama/*`
-- [ ] Update `ttsService.js` → calls `/api/tts/*`
 - [ ] Update `playerStats.js` → calls `/api/knowledge/*`
 - [ ] Add Game Master companion with dice tools
 - [ ] Add dice roll UI component
@@ -128,7 +117,6 @@ server/
 ├── .env.example          # Template
 ├── routes/
 │   ├── ollama.js         # Ollama proxy
-│   ├── tts.js            # TTS generation
 │   ├── games.js          # Game engine + DnD
 │   ├── knowledge.js      # Key-value store
 │   └── health.js         # Health check
@@ -139,9 +127,7 @@ server/
 │   └── DnDCharacter.js
 ├── services/
 │   ├── ollamaService.js  # Ollama API client
-│   ├── ttsService.js     # Kokoro-js wrapper
 │   ├── diceService.js    # Dice roller
-│   └── cacheService.js   # File cache for TTS
 └── middleware/
     └── error.js          # Error handler
 ```
@@ -163,14 +149,11 @@ server/
 ## Breaking Changes
 
 - Client no longer calls Ollama directly
-- TTS generated server-side (reduces client bundle by ~2.5MB)
 - localStorage → SQLite migration needed
 - Game state moved to server
 
 ## Benefits
 
-- **Smaller client bundle** — Kokoro-js moves to server (~2.5MB saved)
-- **Faster TTS** — server generates once, caches, serves to all clients
 - **Persistent state** — SQLite survives browser clears
 - **Secure Ollama access** — configurable URL, not hardcoded localhost
 - **Shared game state** — multiplayer potential

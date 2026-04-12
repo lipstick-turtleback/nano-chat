@@ -14,7 +14,6 @@ LexiChat is a client-side-only React application. All AI inference runs locally 
 | Styling     | Tailwind CSS 3 + SCSS      | Utility-first + custom design tokens   |
 | AI (Chrome) | `LanguageModel` Prompt API | Standardized, on-device, no API key    |
 | AI (Ollama) | REST `/api/chat` streaming | Local models, full control             |
-| TTS         | Kokoro-js                  | Client-side speech synthesis           |
 | Markdown    | marked + DOMPurify         | Rendering + XSS sanitization           |
 | Lint        | ESLint 9 (flat config)     | Rules, React hooks validation          |
 | Format      | Prettier 3                 | Consistent code style                  |

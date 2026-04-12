@@ -13,11 +13,9 @@ Browser (Vite, port 5173)
 Express Server (port 3001)
     ↓
 ├── Ollama Proxy → localhost:11434 (or env OLLAMA_URL)
-├── TTS Engine → Kokoro-js (server-side, cached)
 ├── Game Engine → DnD, dice, challenges
 ├── Knowledge Extractor → LLM background jobs
 ├── SQLite → player data, sessions, cache
-└── File Cache → TTS audio, generated content
 ```
 
 ## Directory Structure
@@ -30,7 +28,6 @@ server/
 ├── .env.example             # Template
 ├── routes/
 │   ├── ollama.js            # Ollama proxy routes
-│   ├── tts.js               # TTS generation + cache
 │   ├── games.js             # DnD, dice, challenges
 │   ├── knowledge.js         # Knowledge store CRUD
 │   ├── sessions.js          # Chat session management
@@ -40,13 +37,10 @@ server/
 │   ├── Session.js           # Chat session queries
 │   ├── Knowledge.js         # Knowledge store queries
 │   ├── Game.js              # DnD/game queries
-│   └── Cache.js             # TTS/file cache queries
 ├── services/
 │   ├── ollamaService.js     # Ollama HTTP client + streaming
-│   ├── ttsService.js        # Kokoro-js wrapper + audio cache
 │   ├── diceService.js       # Dice rolling (crypto random)
 │   ├── knowledgeExtractor.js# LLM-based knowledge extraction
-│   └── cacheService.js      # File-based cache for TTS audio
 └── middleware/
     ├── error.js             # Global error handler
     └── validate.js          # Request validation
@@ -84,9 +78,6 @@ OLLAMA_DEFAULT_MODEL=gemma4:31b-cloud
 # Database
 DB_PATH=./server/data/lexichat.db
 
-# TTS
-TTS_CACHE_DIR=./server/data/tts_cache
-TTS_CACHE_MAX_AGE_HOURS=72
 
 # Knowledge Extraction
 KNOWLEDGE_EXTRACT_INTERVAL_MESSAGES=10
@@ -100,7 +91,6 @@ NODE_ENV=development
 OLLAMA_URL=http://localhost:11434
 OLLAMA_DEFAULT_MODEL=gemma4:31b-cloud
 DB_PATH=./server/data/lexichat.db
-TTS_CACHE_DIR=./server/data/tts_cache
 KNOWLEDGE_EXTRACT_INTERVAL_MESSAGES=10
 ```
 
@@ -222,8 +212,6 @@ export function initSchema() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
-    -- TTS Cache
-    CREATE TABLE IF NOT EXISTS tts_cache (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       text_hash TEXT NOT NULL UNIQUE,
       voice TEXT NOT NULL,
@@ -262,7 +250,6 @@ import cookieParser from 'cookie-parser';
 import { initSchema } from './db.js';
 import { errorHandler } from './middleware/error.js';
 import ollamaRoutes from './routes/ollama.js';
-import ttsRoutes from './routes/tts.js';
 import gameRoutes from './routes/games.js';
 import knowledgeRoutes from './routes/knowledge.js';
 import sessionRoutes from './routes/sessions.js';
@@ -289,7 +276,6 @@ console.log('✅ Database initialized');
 // Routes
 app.use('/api/health', healthRoutes);
 app.use('/api/ollama', ollamaRoutes);
-app.use('/api/tts', ttsRoutes);
 app.use('/api/games', gameRoutes);
 app.use('/api/knowledge', knowledgeRoutes);
 app.use('/api/sessions', sessionRoutes);
@@ -472,17 +458,13 @@ export default router;
 
 ---
 
-## Phase C: TTS Server
 
-### C.1 `server/services/ttsService.js`
 
 ```javascript
-import { KokoroTTS } from 'kokoro-js';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 
-const CACHE_DIR = process.env.TTS_CACHE_DIR || './server/data/tts_cache';
 const VOICE_MAP = {
   cheerful: 'af_heart',
   soft: 'af_sky',
@@ -492,14 +474,8 @@ const VOICE_MAP = {
   default: 'af_heart'
 };
 
-let ttsInstance = null;
 
-export async function getTTS() {
-  if (!ttsInstance) {
-    ttsInstance = new KokoroTTS();
-    await ttsInstance.load();
   }
-  return ttsInstance;
 }
 
 export function getVoice(style) {
@@ -527,8 +503,6 @@ export async function generateSpeech(text, voiceStyle = 'default') {
     return { path: cachedPath, cached: true };
   }
 
-  const tts = await getTTS();
-  const audio = await tts.generate(text, { voice });
 
   // Save to cache
   const buffer = Buffer.from(await audio.arrayBuffer());
@@ -551,12 +525,10 @@ export function listVoices() {
 }
 ```
 
-### C.2 `server/routes/tts.js`
 
 ```javascript
 import { Router } from 'express';
 import fs from 'fs';
-import * as tts from '../services/ttsService.js';
 
 const router = Router();
 
@@ -565,7 +537,6 @@ router.post('/generate', async (req, res) => {
     const { text, voiceStyle = 'default' } = req.body;
     if (!text) return res.status(400).json({ error: 'Text required' });
 
-    const { path: audioPath, cached } = await tts.generateSpeech(text, voiceStyle);
 
     res.setHeader('Content-Type', 'audio/wav');
     res.setHeader('X-Cached', cached ? 'true' : 'false');
@@ -576,7 +547,6 @@ router.post('/generate', async (req, res) => {
 });
 
 router.get('/voices', (req, res) => {
-  res.json(tts.listVoices());
 });
 
 export default router;
@@ -744,6 +714,5 @@ export default defineConfig({
 
 1. Phase A: Server foundation (db, express, env, scripts) → Test: `curl http://localhost:3001/api/health`
 2. Phase B: Ollama proxy → Test: `curl http://localhost:3001/api/ollama/models`
-3. Phase C: TTS server → Test: `curl -X POST http://localhost:3001/api/tts/generate -d '{"text":"hello"}'`
 4. Phase D: Knowledge extraction → Test: background extraction on chat sessions
 5. Phase E: Client integration → Update useStore.js to call /api/\* endpoints

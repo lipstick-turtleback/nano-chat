@@ -31,17 +31,11 @@ function loadSettings() {
       ? JSON.parse(raw)
       : {
           fontSize: 16,
-          speechEngine: 'browser',
-          voiceStyle: 'default',
-          autoSpeak: false,
           darkMode: false
         };
   } catch {
     return {
       fontSize: 16,
-      speechEngine: 'browser',
-      voiceStyle: 'default',
-      autoSpeak: false,
       darkMode: false
     };
   }

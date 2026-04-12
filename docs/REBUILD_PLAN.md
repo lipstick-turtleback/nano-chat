@@ -12,7 +12,6 @@ Complete rebuild of the chat application with:
 
 - Zustand 4.5.7 for state management
 - Unified AI client architecture (Chrome + Ollama, interchangeable)
-- Kokoro-js for client-side TTS (replaces Web Speech API)
 - Personal-development companions (5 personas, each focused on a growth area)
 - SCSS + Tailwind CSS for styling
 - ESLint + Prettier restored alongside Biome
@@ -27,7 +26,6 @@ Complete rebuild of the chat application with:
 ### 1.1 Dependencies
 
 - ✅ Zustand 4.5.7 (installed)
-- ✅ Kokoro-js (to install)
 - ✅ SCSS/sass (installed)
 - ✅ ESLint + plugins + Prettier (reinstalled)
 - Keep: React 19, Vite 5, marked, DOMPurify, Tailwind CSS
@@ -104,7 +102,6 @@ src/
       markdown.js
       id.js                   ← message ID generator
     services/
-      ttsService.js           ← Kokoro-js wrapper
   test/
     setup.js
     mocks/
@@ -193,7 +190,6 @@ const useStore = create((set, get) => ({
 
   // TTS
   isSpeaking: false,
-  kokoroReady: false,
 
   // Actions
   init: async () => {...},
@@ -218,21 +214,17 @@ const useStore = create((set, get) => ({
 - `sendMessage(text)`: Push user message, stream AI response
 - `switchProvider(p)`: Destroy old session, create new one, reset chat
 - `selectCompanion(id)`: Reset chat, re-init with new system prompt
-- Speech via Kokoro-js with per-companion voice style presets
 
 ---
 
-## Phase 4: Kokoro-js TTS Integration
 
 ### 4.1 Service (`src/lib/services/ttsService.js`)
 
 ```javascript
-import { KokoroTTS } from 'kokoro-js';
 
 let ttsInstance = null;
 
 export async function initTTS(onProgress) {
-  ttsInstance = new KokoroTTS();
   await ttsInstance.load();
   return ttsInstance;
 }
@@ -442,7 +434,6 @@ Runs: `lint → test --coverage`
 ```
 Phase 1 (Infrastructure) → Phase 2 (AI Clients) → Phase 3 (Zustand Store)
      ↓                           ↓                          ↓
-Phase 4 (Kokoro TTS) → Phase 5 (Components) → Phase 6 (SCSS)
      ↓                      ↓                     ↓
 Phase 7 (Tests) → Phase 8 (Quality Gates) → Final Build
 ```

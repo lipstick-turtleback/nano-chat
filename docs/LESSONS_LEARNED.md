@@ -93,13 +93,10 @@
 
 ---
 
-## 2026-04-10 — Kokoro-js TTS Integration
 
 ### Client-Side TTS Has a Heavy WASM Payload
 
-**Context:** Kokoro-js uses ONNX runtime with WebAssembly for speech synthesis.
 **What happened:** The built JS bundle jumped from ~250kb to ~2.5MB (mostly `ort-wasm-simd-threaded.jsep.wasm` at 21MB uncompressed, 5MB gzipped).
-**Mitigation:** Dynamic `import()` for Kokoro-js so it only loads when the user clicks "play" on a message. (TODO: implement code splitting).
 **Rule:** Heavy ML/WASM libraries should be lazy-loaded. Don't block the initial render.
 
 ---
@@ -146,17 +143,13 @@
 **Fix:** Use`crypto.randomUUID()`with a fallback to`Date.now() + Math.random()`.
 **Rule:** Never use module-scoped counters for unique IDs. Use cryptographic or time+random generators.
 
-### Kokoro-js Should Be Lazy-Loaded
 
-**Context:** Kokoro-js has a 21MB WASM file. Loading it eagerly increased the initial bundle from ~250KB to ~2.5MB.
 **What happened:** The app takes significantly longer to load, even if the user never clicks "play."
-**Fix:** Dynamic `import('kokoro-js')` inside the `initTTS()` function. Kokoro is now a separate chunk (2.2MB) that only loads on first TTS use.
 **Rule:** ML/WASM libraries should always be lazy-loaded. The initial bundle should be under 300KB.
 
 ### Zustand + Vite Manual Chunking Improves Initial Load
 
 **Context:** Without `manualChunks`, Vite bundled everything into one 280KB file.
-**What happened:** After adding `manualChunks`: vendor (3.6KB), state (11KB), utils (58KB), app (206KB), kokoro (2.2MB lazy).
 **Fix:** `build.rollupOptions.output.manualChunks` in vite.config.js.
 **Rule:** Chunk vendor, state, and heavy utilities separately. The user's first paint only needs vendor + state + minimal app code.
 

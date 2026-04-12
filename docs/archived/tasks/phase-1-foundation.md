@@ -11,7 +11,6 @@ Set up the project foundation: dependencies, config files, directory structure, 
 ## Checklist
 
 - [x] Install Zustand 4.5.7
-- [x] Install Kokoro-js
 - [x] Install SCSS (sass)
 - [x] Reinstall ESLint + Prettier + plugins
 - [x] Upgrade to Vite 7.3.2 + @vitejs/plugin-react 5

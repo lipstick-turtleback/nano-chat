@@ -153,7 +153,6 @@ Status indicator + settings trigger.
 │ SPEECH                             │
 │ ◉ Browser Speech                   │
 │   Built-in, fast, no download      │
-│ ○ Kokoro AI Voice                  │
 │   High quality, ~2.5MB download    │
 │ ○ Off                              │
 │   No speech synthesis              │
@@ -196,7 +195,6 @@ Status indicator + settings trigger.
 
 | Control       | Type       | Options                                              | Default | Action                   |
 | ------------- | ---------- | ---------------------------------------------------- | ------- | ------------------------ |
-| Speech Engine | RadioGroup | Browser Speech, Kokoro AI Voice, Off                 | browser | Changes TTS engine       |
 | Voice Style   | Select     | Default, Soft, Energetic, Measured, Cheerful, Upbeat | default | Changes companion voice  |
 | Auto-speak    | Switch     | On / Off                                             | off     | Auto-speaks AI responses |
 
@@ -688,7 +686,6 @@ All text meets WCAG AA (4.5:1 minimum):
 | Message too long    | Input validation  | Error banner                    | User shortens message                    |
 | Ollama disconnected | Health check      | Settings hint                   | User starts Ollama, clicks refresh       |
 | Export failed       | Blob creation     | Error banner                    | User retries                             |
-| TTS error           | Kokoro/Web Speech | Silent fallback to other engine | User changes engine in settings          |
 | Network error       | API calls         | Error banner                    | User retries                             |
 
 ### 13.2 Loading States
