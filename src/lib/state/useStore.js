@@ -9,17 +9,17 @@ import {
   DEFAULT_OLLAMA_MODEL
 } from '../utils/constants';
 import { renderMarkdown } from '../utils/markdown';
-// eslint-disable-next-line no-unused-vars
 import { loadKnowledge, saveKnowledge, buildKnowledgeContext } from '../services/knowledgeService';
-// eslint-disable-next-line no-unused-vars
 import {
   loadPlayerData,
   savePlayerData,
   getCompanionProgress,
-  updateCompanionProgress
+  updateCompanionProgress,
+  addAchievement
 } from '../services/playerStats';
 import { pickRandomThemes } from '../utils/themeEngine';
 import { TOOL_REFERENCE } from '../utils/toolReference';
+import { getCachedChallenge, cacheChallenge } from '../services/challengeCache';
 
 const API = '/api';
 
@@ -142,6 +142,7 @@ export const useStore = create((set, get) => ({
   // Tracking
   messagesThisSession: 0,
   knowledgeExtracted: false,
+  companionProgress: null, // Current companion's progress data
 
   // Abort
   abortController: null,
@@ -156,6 +157,12 @@ export const useStore = create((set, get) => ({
     const assistant = ASSISTANTS[assistantId];
     if (!assistant) return;
 
+    // Load companion-specific knowledge (silent, no chat message)
+    const knowledgeContext = await buildKnowledgeContext(assistantId);
+
+    // Load companion progress
+    const companionProgress = getCompanionProgress(assistantId);
+
     set({
       selectedAssistantId: assistantId,
       messages: [],
@@ -164,7 +171,8 @@ export const useStore = create((set, get) => ({
       modelDownloadProgress: null,
       isInitializing: true,
       messagesThisSession: 0,
-      knowledgeExtracted: false
+      knowledgeExtracted: false,
+      companionProgress // Store for RightPanel
     });
 
     // Apply theme
@@ -176,6 +184,11 @@ export const useStore = create((set, get) => ({
 
     try {
       const { provider } = get();
+
+      // Build system prompt with knowledge context
+      const systemPrompt = knowledgeContext
+        ? `${assistant.description}\n\n${knowledgeContext}\n\n${TOOL_REFERENCE}`
+        : `${assistant.description}\n\n${TOOL_REFERENCE}`;
 
       if (provider === 'chrome') {
         const availability = await ChromePromptClient.availability();
@@ -191,7 +204,7 @@ export const useStore = create((set, get) => ({
           availability === 'downloading' ? (p) => set({ modelDownloadProgress: p }) : null;
 
         const session = await ChromePromptClient.createSession({
-          systemPrompt: buildSystemPrompt(assistant.description),
+          systemPrompt,
           onProgress: progressCb
         });
 
@@ -204,7 +217,7 @@ export const useStore = create((set, get) => ({
         const available = await OllamaClient.availability();
         if (available === 'available') {
           const session = await OllamaClient.createSession({
-            systemPrompt: buildSystemPrompt(assistant.description),
+            systemPrompt,
             model: get().selectedOllamaModel
           });
           set({ session, ollamaConnected: true, isInitializing: false });
@@ -255,12 +268,15 @@ export const useStore = create((set, get) => ({
     }
 
     const userMsg = createMessageObj(text, 'req');
+    const newMessageCount = state.messagesThisSession + 1;
+
     set({
       messages: [...state.messages, userMsg],
       isProcessing: true,
       textInputValue: '',
       runtimeError: null,
-      lastCopiedId: null
+      lastCopiedId: null,
+      messagesThisSession: newMessageCount
     });
 
     // Add processing placeholder
@@ -268,7 +284,7 @@ export const useStore = create((set, get) => ({
       messages: [...prev.messages, createMessageObj('processing...', 'resp')]
     }));
 
-    const { session, provider: prov, selectedOllamaModel } = get();
+    const { session, provider: prov, selectedOllamaModel, selectedAssistantId } = get();
     if (!session) {
       set((prev) => {
         const updated = [...prev.messages];
@@ -308,6 +324,16 @@ export const useStore = create((set, get) => ({
         // Stream complete — render markdown once
         set((prev) => finalizeMessage(prev, prev.messages.length - 1));
       }
+
+      // Trigger background knowledge extraction every 5 messages (silent)
+      if (newMessageCount % 5 === 0) {
+        get().compressKnowledge();
+      }
+
+      // Update companion progress
+      updateCompanionProgress(selectedAssistantId, {
+        totalMessages: newMessageCount
+      });
     } catch (err) {
       if (err.name === 'AbortError') return;
       console.error(err);
@@ -447,6 +473,41 @@ export const useStore = create((set, get) => ({
     // Pick 2-4 random themes
     const themes = pickRandomThemes();
 
+    // Check cache first
+    const cacheKey = themes.sort().join(',');
+    const cached = getCachedChallenge(cacheKey);
+
+    if (cached) {
+      // Use cached challenge
+      const toolJson = {
+        tool: cached.game || 'quiz',
+        title: cached.title || 'Creative Challenge',
+        content: cached.content || cached.params || {}
+      };
+
+      const challengeMsg = createMessageObj(
+        `Here's a creative challenge for you!\n\n${JSON.stringify(toolJson)}`,
+        'resp'
+      );
+
+      set((prev) => ({
+        messages: [...prev.messages, challengeMsg],
+        isProcessing: false
+      }));
+
+      // Award achievement for first challenge
+      addAchievement({
+        id: 'first_challenge',
+        name: 'First Steps',
+        description: 'Complete your first challenge',
+        category: 'challenges',
+        icon: '🌟',
+        xpReward: 50
+      });
+
+      return;
+    }
+
     // Add a "generating..." message
     set({
       messages: [
@@ -472,6 +533,9 @@ export const useStore = create((set, get) => ({
 
       const challenge = await res.json();
 
+      // Cache the challenge
+      cacheChallenge(cacheKey, challenge);
+
       // Insert challenge as a raw tool JSON that ToolRenderer can detect
       // ToolRenderer expects: { tool: "quiz", content: { prompt, options, correct, ... } }
       const toolJson = {
@@ -489,6 +553,16 @@ export const useStore = create((set, get) => ({
         messages: [...prev.messages.filter((m) => m.src !== 'info'), challengeMsg],
         isProcessing: false
       }));
+
+      // Award achievement for first challenge
+      addAchievement({
+        id: 'first_challenge',
+        name: 'First Steps',
+        description: 'Complete your first challenge',
+        category: 'challenges',
+        icon: '🌟',
+        xpReward: 50
+      });
     } catch (err) {
       console.error('Challenge generation failed:', err);
       set((prev) => ({
@@ -498,6 +572,35 @@ export const useStore = create((set, get) => ({
         ],
         isProcessing: false
       }));
+    }
+  },
+
+  // Compress knowledge from current session (silent, background)
+  compressKnowledge: async () => {
+    const { selectedAssistantId, messages, knowledgeExtracted } = get();
+    if (knowledgeExtracted || messages.length < 10) return;
+
+    try {
+      // Get last 5 user+assistant messages for compression
+      const recentMessages = messages
+        .filter((m) => m.src === 'req' || m.src === 'resp')
+        .slice(-10);
+
+      if (recentMessages.length < 5) return;
+
+      // Build knowledge from recent messages
+      const knowledge = {
+        recentTopics: recentMessages.map((m) => m.text.slice(0, 100)),
+        lastInteraction: new Date().toISOString(),
+        messageCount: messages.length
+      };
+
+      // Save to server (silent, no chat message)
+      await saveKnowledge(selectedAssistantId, { recentActivity: knowledge });
+
+      set({ knowledgeExtracted: true });
+    } catch (err) {
+      console.error('Knowledge compression failed:', err);
     }
   },
 

@@ -34,35 +34,30 @@ function saveCache(cache) {
 }
 
 /**
- * Generate a stable cache key from companion + challenge type + themes
+ * Generate a stable cache key from themes
  */
-function makeCacheKey(companionId, type, themes) {
+function makeCacheKey(themes) {
   const sorted = [...themes].sort().join('+');
-  return `${companionId}:${type}:${sorted}`;
+  return sorted;
 }
 
 /**
  * Get a cached challenge if available
  */
-export function getCachedChallenge(companionId, type, themes) {
+export function getCachedChallenge(cacheKey) {
   const cache = loadCache();
-  const key = makeCacheKey(companionId, type, themes);
-  return cache.items[key] || null;
+  return cache.items[cacheKey] || null;
 }
 
 /**
  * Store a challenge in the cache
  */
-export function cacheChallenge(companionId, type, themes, data) {
+export function cacheChallenge(cacheKey, data) {
   const cache = loadCache();
-  const key = makeCacheKey(companionId, type, themes);
 
-  cache.items[key] = {
+  cache.items[cacheKey] = {
     ...data,
-    cachedAt: Date.now(),
-    companionId,
-    type,
-    themes
+    cachedAt: Date.now()
   };
 
   // Prune if too large — remove oldest entries
@@ -81,8 +76,8 @@ export function cacheChallenge(companionId, type, themes, data) {
 /**
  * Check if we already have a cached challenge for these themes
  */
-export function hasCachedChallenge(companionId, type, themes) {
-  return getCachedChallenge(companionId, type, themes) !== null;
+export function hasCachedChallenge(cacheKey) {
+  return getCachedChallenge(cacheKey) !== null;
 }
 
 /**

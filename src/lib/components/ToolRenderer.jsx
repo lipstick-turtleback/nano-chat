@@ -595,6 +595,405 @@ function WordInput({ onSubmit, label = 'Your answer' }) {
 }
 
 /**
+ * Reflection Card — journaling prompt with text input
+ */
+function ReflectionCard({ content, onSubmit }) {
+  const [text, setText] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = () => {
+    if (!text.trim()) return;
+    setSubmitted(true);
+    onSubmit?.({ text: text.trim(), wordCount: text.trim().split(/\s+/).length });
+  };
+
+  return (
+    <div className="tool-card reflection-card">
+      <div className="tool-card-header">
+        <span className="tool-badge">📝</span>
+        <h4>{content.prompt || 'Reflection Prompt'}</h4>
+      </div>
+
+      {!submitted ? (
+        <>
+          {content.instructions && <p className="reflection-instructions">{content.instructions}</p>}
+          <textarea
+            className="reflection-textarea"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Write your thoughts here..."
+            rows={4}
+          />
+          <button
+            type="button"
+            className="quiz-submit-btn"
+            onClick={handleSubmit}
+            disabled={!text.trim()}
+          >
+            Submit Reflection
+          </button>
+        </>
+      ) : (
+        <div className="quiz-explanation">
+          <strong>✍️ Reflection saved!</strong>
+          <p>{text.length} characters, {text.trim().split(/\s+/).length} words</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Progress Card — visual milestone tracker
+ */
+function ProgressCard({ content, onSubmit }) {
+  const milestones = content.milestones || [];
+  const completedCount = milestones.filter((m) => m.completed).length;
+  const progressPercent =
+    milestones.length > 0 ? Math.round((completedCount / milestones.length) * 100) : 0;
+
+  return (
+    <div className="tool-card progress-card">
+      <div className="tool-card-header">
+        <span className="tool-badge">📊</span>
+        <h4>{content.title || 'Progress Tracker'}</h4>
+      </div>
+
+      <div className="progress-bar-container">
+        <div className="progress-bar-fill" style={{ width: `${progressPercent}%` }} />
+        <span className="progress-bar-text">{progressPercent}%</span>
+      </div>
+
+      <div className="milestones-list">
+        {milestones.map((milestone, i) => (
+          <div key={i} className={`milestone-item ${milestone.completed ? 'completed' : ''}`}>
+            <span className="milestone-icon">{milestone.completed ? '✅' : '⬜'}</span>
+            <span className="milestone-text">{milestone.text}</span>
+          </div>
+        ))}
+      </div>
+
+      {content.message && <p className="progress-message">{content.message}</p>}
+    </div>
+  );
+}
+
+/**
+ * Poll Card — opinion gathering with vote buttons
+ */
+function PollCard({ content, onSubmit }) {
+  const [selected, setSelected] = useState(null);
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = () => {
+    if (selected === null) return;
+    setSubmitted(true);
+    onSubmit?.({ selected, option: content.options[selected] });
+  };
+
+  return (
+    <div className="tool-card poll-card">
+      <div className="tool-card-header">
+        <span className="tool-badge">📊</span>
+        <h4>{content.question || 'Quick Poll'}</h4>
+      </div>
+
+      <div className="poll-options">
+        {content.options.map((opt, i) => {
+          let className = 'poll-option';
+          if (submitted) {
+            if (i === selected) className += ' selected';
+          } else if (i === selected) {
+            className += ' selected';
+          }
+          return (
+            <button
+              key={i}
+              type="button"
+              className={className}
+              onClick={() => !submitted && setSelected(i)}
+              disabled={submitted}
+            >
+              {opt}
+            </button>
+          );
+        })}
+      </div>
+
+      {!submitted ? (
+        <button
+          type="button"
+          className="quiz-submit-btn"
+          onClick={handleSubmit}
+          disabled={selected === null}
+        >
+          Vote
+        </button>
+      ) : (
+        <div className="quiz-explanation">
+          <strong>You voted for: {content.options[selected]}</strong>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Word of the Day Card — flashcard-style word display
+ */
+function WordOfDayCard({ content, onSubmit }) {
+  const [revealed, setRevealed] = useState(false);
+
+  const handleReveal = () => {
+    setRevealed(true);
+    onSubmit?.({ viewed: true });
+  };
+
+  return (
+    <div className="tool-card wod-card">
+      <div className="tool-card-header">
+        <span className="tool-badge">📚</span>
+        <h4>Word of the Day</h4>
+      </div>
+
+      <div className="wod-content">
+        <h3 className="wod-word">{content.word}</h3>
+        {content.pronunciation && (
+          <p className="wod-pronunciation">/{content.pronunciation}/</p>
+        )}
+
+        {!revealed ? (
+          <button type="button" className="quiz-submit-btn" onClick={handleReveal}>
+            Reveal Meaning
+          </button>
+        ) : (
+          <div className="wod-details">
+            <p className="wod-definition">{content.definition}</p>
+            {content.example && (
+              <p className="wod-example">
+                <em>Example:</em> {content.example}
+              </p>
+            )}
+            {content.etymology && (
+              <p className="wod-etymology">
+                <em>Origin:</em> {content.etymology}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Code Card — syntax-highlighted code block
+ */
+function CodeCard({ content, onSubmit }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(content.code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    onSubmit?.({ copied: true });
+  };
+
+  return (
+    <div className="tool-card code-card">
+      <div className="tool-card-header">
+        <span className="tool-badge">💻</span>
+        <h4>{content.title || 'Code Example'}</h4>
+        <button type="button" className="code-copy-btn" onClick={handleCopy}>
+          {copied ? '✓ Copied' : '📋 Copy'}
+        </button>
+      </div>
+
+      {content.description && <p className="code-description">{content.description}</p>}
+
+      <pre className="code-block">
+        <code className={`language-${content.language || 'javascript'}`}>{content.code}</code>
+      </pre>
+
+      {content.explanation && <p className="code-explanation">{content.explanation}</p>}
+    </div>
+  );
+}
+
+/**
+ * Timeline Card — sequential events display
+ */
+function TimelineCard({ content, onSubmit }) {
+  const events = content.events || [];
+
+  return (
+    <div className="tool-card timeline-card">
+      <div className="tool-card-header">
+        <span className="tool-badge">📅</span>
+        <h4>{content.title || 'Timeline'}</h4>
+      </div>
+
+      <div className="timeline">
+        {events.map((event, i) => (
+          <div key={i} className="timeline-item">
+            <div className="timeline-dot" />
+            <div className="timeline-content">
+              {event.date && <span className="timeline-date">{event.date}</span>}
+              <h5 className="timeline-event-title">{event.title}</h5>
+              {event.description && <p className="timeline-event-desc">{event.description}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Comparison Card — side-by-side table
+ */
+function ComparisonCard({ content, onSubmit }) {
+  const items = content.items || [];
+  const headers = content.headers || ['Option A', 'Option B'];
+
+  return (
+    <div className="tool-card comparison-card">
+      <div className="tool-card-header">
+        <span className="tool-badge">⚖️</span>
+        <h4>{content.title || 'Comparison'}</h4>
+      </div>
+
+      <table className="comparison-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            {headers.map((header, i) => (
+              <th key={i}>{header}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, i) => (
+            <tr key={i}>
+              <td className="comparison-feature">{item.feature}</td>
+              {item.values.map((val, j) => (
+                <td key={j} className={`comparison-value ${val.highlight ? 'highlight' : ''}`}>
+                  {val.text}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {content.summary && <p className="comparison-summary">{content.summary}</p>}
+    </div>
+  );
+}
+
+/**
+ * Checklist Card — interactive task list
+ */
+function ChecklistCard({ content, onSubmit }) {
+  const [checked, setChecked] = useState({});
+
+  const handleToggle = (index) => {
+    const newChecked = { ...checked, [index]: !checked[index] };
+    setChecked(newChecked);
+
+    const completedCount = Object.values(newChecked).filter(Boolean).length;
+    onSubmit?.({ checked: newChecked, completedCount, total: content.items.length });
+  };
+
+  const completedCount = Object.values(checked).filter(Boolean).length;
+  const allDone = completedCount === content.items.length;
+
+  return (
+    <div className="tool-card checklist-card">
+      <div className="tool-card-header">
+        <span className="tool-badge">✅</span>
+        <h4>{content.title || 'Checklist'}</h4>
+      </div>
+
+      <div className="checklist-items">
+        {content.items.map((item, i) => (
+          <label key={i} className={`checklist-item ${checked[i] ? 'checked' : ''}`}>
+            <input
+              type="checkbox"
+              checked={checked[i] || false}
+              onChange={() => handleToggle(i)}
+            />
+            <span className="checklist-text">{item}</span>
+          </label>
+        ))}
+      </div>
+
+      <div className="checklist-progress">
+        {completedCount}/{content.items.length} completed
+        {allDone && ' 🎉'}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Rating Card — star rating widget
+ */
+function RatingCard({ content, onSubmit }) {
+  const [rating, setRating] = useState(0);
+  const [hover, setHover] = useState(0);
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = () => {
+    if (rating === 0) return;
+    setSubmitted(true);
+    onSubmit?.({ rating });
+  };
+
+  return (
+    <div className="tool-card rating-card">
+      <div className="tool-card-header">
+        <span className="tool-badge">⭐</span>
+        <h4>{content.question || 'Rate this'}</h4>
+      </div>
+
+      {!submitted ? (
+        <>
+          <div className="star-rating">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                type="button"
+                className={`star ${star <= (hover || rating) ? 'filled' : ''}`}
+                onClick={() => setRating(star)}
+                onMouseEnter={() => setHover(star)}
+                onMouseLeave={() => setHover(0)}
+                aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+              >
+                ★
+              </button>
+            ))}
+          </div>
+          {rating > 0 && <p className="rating-text">{rating} / 5 stars</p>}
+          <button
+            type="button"
+            className="quiz-submit-btn"
+            onClick={handleSubmit}
+            disabled={rating === 0}
+          >
+            Submit Rating
+          </button>
+        </>
+      ) : (
+        <div className="quiz-explanation">
+          <strong>Thank you! You rated this {rating} / 5 stars</strong>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * Main Tool Renderer — dispatches to the right card type
  */
 function ToolRenderer({ tool, onSubmit }) {
@@ -676,6 +1075,34 @@ function ToolRenderer({ tool, onSubmit }) {
           onSubmit={onSubmit}
         />
       );
+
+    // New interactive tools
+    case 'reflection':
+      return <ReflectionCard content={tool.content} onSubmit={onSubmit} />;
+
+    case 'progress':
+      return <ProgressCard content={tool.content} onSubmit={onSubmit} />;
+
+    case 'poll':
+      return <PollCard content={tool.content} onSubmit={onSubmit} />;
+
+    case 'word_of_day':
+      return <WordOfDayCard content={tool.content} onSubmit={onSubmit} />;
+
+    case 'code':
+      return <CodeCard content={tool.content} onSubmit={onSubmit} />;
+
+    case 'timeline':
+      return <TimelineCard content={tool.content} onSubmit={onSubmit} />;
+
+    case 'comparison':
+      return <ComparisonCard content={tool.content} onSubmit={onSubmit} />;
+
+    case 'checklist':
+      return <ChecklistCard content={tool.content} onSubmit={onSubmit} />;
+
+    case 'rating':
+      return <RatingCard content={tool.content} onSubmit={onSubmit} />;
 
     // Background/notification tools
     case 'save_memory':

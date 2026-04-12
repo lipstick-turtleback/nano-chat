@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { ASSISTANTS, MAX_INPUT_LENGTH } from './lib/utils/constants';
 import { useStore } from './lib/state/useStore';
+import { loadPlayerData } from './lib/services/playerStats';
 import Sidebar from './lib/components/Sidebar';
 import ChatHeader from './lib/components/ChatHeader';
 import ChatArea from './lib/components/ChatArea';
@@ -27,6 +28,7 @@ function App() {
     modelDownloadProgress,
     settings,
     showSettings,
+    companionProgress,
     init,
     selectCompanion,
     switchProvider,
@@ -125,8 +127,8 @@ function App() {
         assistant={assistant}
         onChallenge={requestChallenge}
         isProcessing={isProcessing}
-        companionProgress={{}}
-        achievements={[]}
+        companionProgress={companionProgress}
+        achievements={loadPlayerData()?.achievements || []}
         memories={{}}
       />
 
