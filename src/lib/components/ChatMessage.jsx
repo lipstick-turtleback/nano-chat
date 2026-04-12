@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import MessageActions from './MessageActions';
 import ToolRenderer from './ToolRenderer';
+import { renderMarkdown } from '../utils/markdown';
 
 /**
  * Try to parse tool JSON from message text.
@@ -100,7 +101,7 @@ function ChatMessage({ message, assistant, onCopy, lastCopiedId, onToolSubmit })
             {displayText && displayText !== 'processing...' && (
               <div
                 className="message-content"
-                dangerouslySetInnerHTML={{ __html: message.formattedText }}
+                dangerouslySetInnerHTML={{ __html: tool ? renderMarkdown(displayText) : message.formattedText }}
               />
             )}
             {tool && (

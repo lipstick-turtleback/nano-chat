@@ -361,6 +361,58 @@ export const useStore = create((set, get) => ({
     }, FOCUS_TIMEOUT);
   },
 
+  // Internal: stream AI response without adding a user message bubble
+  _streamAiResponse: async (promptText) => {
+    if (!promptText?.trim()) return;
+
+    const { session, provider: prov, selectedOllamaModel } = get();
+    if (!session) return;
+
+    // Add processing placeholder
+    set((prev) => ({
+      messages: [...prev.messages, createMessageObj('processing...', 'resp')],
+      isProcessing: true
+    }));
+
+    const abortController = new AbortController();
+    set({ abortController });
+
+    try {
+      if (prov === 'ollama') {
+        const allMessages = get().messages.slice(0, -1);
+        const history = buildHistory(allMessages);
+        const stream = session.promptStreaming(promptText, {
+          model: selectedOllamaModel,
+          signal: abortController.signal,
+          messages: history
+        });
+
+        for await (const chunk of stream) {
+          set((prev) => updateMessageText(prev, prev.messages.length - 1, chunk));
+          debouncedScrollToBottom();
+        }
+        set((prev) => finalizeMessage(prev, prev.messages.length - 1));
+      } else {
+        const stream = session.promptStreaming(promptText);
+        for await (const chunk of stream) {
+          set((prev) => updateMessageText(prev, prev.messages.length - 1, chunk));
+          debouncedScrollToBottom();
+        }
+        set((prev) => finalizeMessage(prev, prev.messages.length - 1));
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      console.error(err);
+      set((prev) => {
+        const updated = [...prev.messages];
+        updated[updated.length - 1] = createMessageObj(`AI error: ${err.message}`, 'error');
+        return { messages: updated };
+      });
+    } finally {
+      set({ isProcessing: false, abortController: null });
+    }
+  },
+
   refreshOllamaModels: async () => {
     try {
       const models = await OllamaClient.listModels();
@@ -470,7 +522,7 @@ export const useStore = create((set, get) => ({
     const feedbackPrompt = `The user just completed a "${toolType}": "${tool.title || 'Challenge'}"\nTheir result: ${userResultText}\n\nGive 1-2 sentences of personalized feedback. If they did well, celebrate specifically. If not, encourage them and offer a hint. Keep it warm and natural.`;
 
     try {
-      await get().sendMessage(feedbackPrompt);
+      await get()._streamAiResponse(feedbackPrompt);
     } catch (err) {
       console.error('Tool feedback failed:', err);
     }
