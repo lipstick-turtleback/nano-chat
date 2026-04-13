@@ -154,6 +154,9 @@ INSPIRATION TOKENS: ${currentInspiration} remaining${inspLeft}
 CAMPAIGN CONTEXT:
 ${formatCampaign(campaign)}
 
+CHARACTER:
+${formatCharacter(character)}
+
 YOUR RESPONSE MUST BE EXACTLY THIS JSON STRUCTURE:
 
 {

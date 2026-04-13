@@ -884,7 +884,7 @@ Continue the narrative based on this skill check result.`;
 
     const dndPrompt = buildDnDPrompt({
       actionText,
-      actionId: customAction ? 'custom' : (choice?.id || 'unknown'),
+      actionId,
       customAction: !!customAction,
       naturalRoll,
       advantageRoll: inspirationSpent ? advantageRoll : null,
