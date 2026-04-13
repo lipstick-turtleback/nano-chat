@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { loadPlayerData } from '../services/playerStats';
 import DnDCharacterSheet from './DnDCharacterSheet';
+import ProgressDashboard from './ProgressDashboard';
 
 /**
  * Right Panel — Persistent widgets next to the chat
@@ -14,6 +15,7 @@ function RightPanel({
   dndCampaign: _dndCampaign,
   dndCharacter
 }) {
+  const [showDashboard, setShowDashboard] = useState(false);
   const achievements = useMemo(() => {
     const data = loadPlayerData();
     return data?.achievements || [];
@@ -31,12 +33,29 @@ function RightPanel({
         🎲 Surprise Me
       </button>
 
+      {/* Dashboard trigger */}
+      <button
+        type="button"
+        className="dashboard-trigger-btn"
+        onClick={() => setShowDashboard(true)}
+      >
+        📊 View Progress Dashboard
+      </button>
+
       {/* Widgets stacked vertically */}
       <div className="right-panel-widgets">
         <ProgressWidget progress={companionProgress} />
         <AchievementsWidget achievements={achievements} />
         {dndCharacter && <DnDCharacterSheet character={dndCharacter} />}
       </div>
+
+      {/* Progress Dashboard Modal */}
+      <ProgressDashboard
+        isOpen={showDashboard}
+        onClose={() => setShowDashboard(false)}
+        companionProgress={companionProgress}
+        selectedCompanionId={assistant?.id}
+      />
     </aside>
   );
 }

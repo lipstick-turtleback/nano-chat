@@ -5,10 +5,10 @@ import { useState, useEffect } from 'react';
   * then reveals the final roll result.
  * Stays visible until the parent removes it (when LLM responds).
  */
-function DiceRollAnimation({ notation, finalRoll, modifier, onComplete }) {
+function DiceRollAnimation({ notation: _notation, finalRoll, modifier, onComplete }) {
   const [display, setDisplay] = useState('🎲');
   const [revealed, setRevealed] = useState(false);
-  const [done, setDone] = useState(false);
+  const [_done, setDone] = useState(false);
 
   useEffect(() => {
     const result = finalRoll || { total: Math.floor(Math.random() * 20) + 1 };
@@ -32,7 +32,7 @@ function DiceRollAnimation({ notation, finalRoll, modifier, onComplete }) {
 
     timer = setTimeout(roll, interval);
     return () => clearTimeout(timer);
-  }, [finalRoll, onComplete]);
+  }, [finalRoll, onComplete, modifier]);
 
   const isCrit = revealed && finalRoll?.roll === 20;
   const isFumble = revealed && finalRoll?.roll === 1;

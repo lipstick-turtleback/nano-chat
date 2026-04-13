@@ -8,7 +8,7 @@ import {
   DEFAULT_OLLAMA_MODEL
 } from '../utils/constants';
 import { renderMarkdown } from '../utils/markdown';
-import { loadKnowledge, saveKnowledge, buildKnowledgeContext } from '../services/knowledgeService';
+import { saveKnowledge, buildKnowledgeContext } from '../services/knowledgeService';
 import {
   getCompanionProgress,
   updateCompanionProgress,
@@ -98,7 +98,7 @@ function finalizeMessage(prev, index) {
 
 function buildHistory(messages) {
   return messages
-    .filter((m) => m.text && m.src !== 'info')
+    .filter((m) => m.text && m.src !== 'info' && m.src !== 'dice' && m.text !== 'processing...' && m.src !== 'error')
     .map((m) => ({
       role: m.src === 'req' ? 'user' : 'assistant',
       content: m.text
@@ -690,6 +690,55 @@ export const useStore = create((set, get) => ({
     const actionText = customAction || choice?.text || 'Unknown action';
     const actionId = customAction ? 'custom' : (choice?.id || 'unknown');
 
+    // If this came from DnDSkillCheck, it already has a roll result — use it directly
+    if (result.roll !== undefined && result.total !== undefined) {
+      // Skill check already rolled — just feed result to LLM
+      const rollResult = result;
+      const outcomeText = rollResult.isCrit
+        ? `CRITICAL SUCCESS! Natural 20! Roll: ${rollResult.roll} + ${rollResult.modifier} = ${rollResult.total} vs DC ${rollResult.dc}`
+        : rollResult.isFumble
+          ? `CRITICAL FAILURE! Natural 1! Roll: 1 + ${rollResult.modifier} = ${rollResult.total} vs DC ${rollResult.dc}`
+          : rollResult.success
+            ? `Success! Roll: ${rollResult.roll} + ${rollResult.modifier} = ${rollResult.total} vs DC ${rollResult.dc}`
+            : `Failure. Roll: ${rollResult.roll} + ${rollResult.modifier} = ${rollResult.total} vs DC ${rollResult.dc}`;
+
+      set((prev) => {
+        const updated = prev.messages.map((m) => {
+          if (m.id === messageId) {
+            return { ...m, toolResult: { tool, result, feedback: outcomeText } };
+          }
+          return m;
+        });
+        return { messages: updated };
+      });
+
+      const { dndCampaign: _dndCampaign, dndCharacter: _dndCharacter } = get();
+      const character = get().dndCharacter;
+      const campaign = get().dndCampaign;
+
+      const dndPrompt = `The player attempts a skill check.
+
+ACTION: "${actionText}"
+
+DICE RESULT:
+${outcomeText}
+
+CAMPAIGN CONTEXT:
+- Location: ${campaign?.world?.currentLocation || 'Unknown'}
+- Character: ${character?.name || 'Adventurer'} (${character?.className || 'Fighter'}, Level ${character?.level || 1})
+- HP: ${character?.hp?.current || '?'}/${character?.hp?.max || '?'}
+
+Continue the narrative based on this skill check result.`;
+
+      try {
+        await get()._streamAiResponse(dndPrompt);
+      } catch (err) {
+        console.error('DnD skill check failed:', err);
+      }
+      return;
+    }
+
+    // Normal flow: roll dice for narrative choice
     // Determine DC and modifier
     let dc = choice?.dc || 10;
     let modifier = choice?.modifier || 0;
@@ -849,7 +898,7 @@ CAMPAIGN CONTEXT:
 - Character: ${character?.name || 'Adventurer'} (${character?.className || 'Fighter'}, Level ${character?.level || 1})
 - HP: ${character?.hp?.current || '?'}/${character?.hp?.max || '?'}
 - AC: ${character?.ac || '?'}
-- Active enemies: ${(campaign?.enemies || []).map(e => `${e.name} (HP: ${e.hp?.current || e.hp}/${e.hp?.max || e.maxHp}, AC: ${e.ac})`).join(', ') || 'None'}
+- Active enemies: ${((campaign?.combat?.enemies) || []).map(e => `${e.name} (HP: ${e.hp?.current || e.hp}/${e.hp?.max || e.maxHp}, AC: ${e.ac})`).join(', ') || 'None'}
 - Quest: ${campaign?.story?.mainQuest || 'Unknown'}
 
 DETERMINE THE OUTCOME:
@@ -893,55 +942,23 @@ Then continue the narrative and present the NEXT scene with 3-4 new action choic
     });
   },
 
-  // Generate a creative challenge from 3 random themes
+  // Generate a creative challenge from random themes
   requestChallenge: async () => {
-    const { selectedAssistantId, isProcessing } = get();
+    const { selectedAssistantId, isProcessing, session, provider: prov, selectedOllamaModel } = get();
     if (isProcessing) return;
 
     const assistant = ASSISTANTS[selectedAssistantId];
-    // Pick challenge types based on companion preferences
     const preferredTypes = assistant?.challengeTypes || ['quiz', 'true_false', 'fill_blank'];
     const chosenType = preferredTypes[Math.floor(Math.random() * preferredTypes.length)];
-
-    // Pick 2-4 random themes
     const themes = pickRandomThemes();
-
-    // Check cache first
     const cacheKey = `${chosenType}:${themes.sort().join(',')}`;
     const cached = getCachedChallenge(cacheKey);
 
     if (cached) {
-      // Use cached challenge
-      const toolJson = {
-        tool: cached.game || 'quiz',
-        title: cached.title || 'Creative Challenge',
-        content: cached.content || cached.params || {}
-      };
-
-      const challengeMsg = createMessageObj(
-        `Here's a creative challenge for you!\n\n${JSON.stringify(toolJson)}`,
-        'resp'
-      );
-
-      set((prev) => ({
-        messages: [...prev.messages, challengeMsg],
-        isProcessing: false
-      }));
-
-      // Award achievement for first challenge
-      addAchievement({
-        id: 'first_challenge',
-        name: 'First Steps',
-        description: 'Complete your first challenge',
-        category: 'challenges',
-        icon: '🌟',
-        xpReward: 50
-      });
-
+      get()._deliverChallenge(cached, cacheKey);
       return;
     }
 
-    // Add a "generating..." message
     set({
       messages: [
         ...get().messages,
@@ -950,6 +967,7 @@ Then continue the narrative and present the NEXT scene with 3-4 new action choic
       isProcessing: true
     });
 
+    // Try server first, fall back to direct AI client
     try {
       const res = await fetch(`${API}/challenges/generate`, {
         method: 'POST',
@@ -961,76 +979,169 @@ Then continue the narrative and present the NEXT scene with 3-4 new action choic
         })
       });
 
-      if (!res.ok) {
-        throw new Error(`Server error: ${res.status}`);
-      }
-
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
       const challenge = await res.json();
-
-      // Cache the challenge
       cacheChallenge(cacheKey, challenge);
+      get()._deliverChallenge(challenge, cacheKey);
+    } catch {
+      // Fall back to direct AI client
+      try {
+        if (!session) throw new Error('AI session not available');
 
-      // Insert challenge as a raw tool JSON that ToolRenderer can detect
-      // ToolRenderer expects: { tool: "quiz", content: { prompt, options, correct, ... } }
-      const toolJson = {
-        tool: challenge.game || 'quiz',
-        title: challenge.title || 'Creative Challenge',
-        content: challenge.content || challenge.params || {}
-      };
+        const themeList = themes.join('", "');
+        const prompt = `Create a ${chosenType} challenge using these themes: "${themeList}".
 
-      const challengeMsg = createMessageObj(
-        `Here's a creative challenge for you!\n\n${JSON.stringify(toolJson)}`,
-        'resp'
-      );
+Respond with ONLY valid JSON (no markdown, no code blocks):
+{"game": "${chosenType}", "title": "Creative Challenge: ${themes.join(', ')}", "content": {...}}
 
-      set((prev) => ({
-        messages: [...prev.messages.filter((m) => m.src !== 'info'), challengeMsg],
-        isProcessing: false
-      }));
+For a quiz: {"prompt": "...", "options": ["A","B","C","D"], "correct": 1, "explanation": "..."}
+For true_false: {"statements": [{"text": "...", "answer": true, "explanation": "..."}]} (5 statements)
+For fill_blank: {"text": "Paragraph with [BLANK1], [BLANK2], [BLANK3]", "answers": ["a","b","c"], "explanation": "..."}
+For word_match: {"pairs": [{"word": "...", "definition": "..."}]} (5 pairs)
+For riddle: {"riddle": "...", "answer": "...", "hint": "...", "explanation": "..."}
 
-      // Award achievement for first challenge
-      addAchievement({
-        id: 'first_challenge',
-        name: 'First Steps',
-        description: 'Complete your first challenge',
-        category: 'challenges',
-        icon: '🌟',
-        xpReward: 50
-      });
-    } catch (err) {
-      console.error('Challenge generation failed:', err);
-      set((prev) => ({
-        messages: [
-          ...prev.messages.filter((m) => m.src !== 'info'),
-          createMessageObj(`Couldn't generate a challenge: ${err.message}. Try again!`, 'error')
-        ],
-        isProcessing: false
-      }));
+Make it creative and educational.`;
+
+        let fullResponse = '';
+        if (prov === 'ollama') {
+          const allMessages = get().messages.filter((m) => m.src !== 'info');
+          const history = buildHistory(allMessages);
+          const stream = session.promptStreaming(prompt, {
+            model: selectedOllamaModel,
+            messages: history
+          });
+          for await (const chunk of stream) {
+            fullResponse = chunk;
+          }
+        } else {
+          const stream = session.promptStreaming(prompt);
+          for await (const chunk of stream) {
+            fullResponse = chunk;
+          }
+        }
+
+        // Parse JSON from response
+        const jsonMatch = fullResponse.match(/\{[\s\S]*"game"\s*:[\s\S]*\}/) ||
+                          fullResponse.match(/\{[\s\S]*"tool"\s*:[\s\S]*\}/);
+        if (!jsonMatch) throw new Error('Failed to parse challenge from AI response');
+
+        const challenge = JSON.parse(jsonMatch[0]);
+        // Normalize: game -> tool
+        if (challenge.game && !challenge.tool) {
+          challenge.tool = challenge.game;
+        }
+        cacheChallenge(cacheKey, challenge);
+        get()._deliverChallenge(challenge, cacheKey);
+      } catch (aiErr) {
+        console.error('Challenge generation failed:', aiErr);
+        set((prev) => ({
+          messages: [
+            ...prev.messages.filter((m) => m.src !== 'info'),
+            createMessageObj(`Couldn't generate a challenge: ${aiErr.message}. Try again!`, 'error')
+          ],
+          isProcessing: false
+        }));
+      }
     }
+  },
+
+  // Internal: deliver a challenge as a chat message
+  _deliverChallenge: (challenge, _cacheKey) => {
+    const toolJson = {
+      tool: challenge.game || challenge.tool || 'quiz',
+      title: challenge.title || 'Creative Challenge',
+      content: challenge.content || challenge.params || {}
+    };
+
+    const challengeMsg = createMessageObj(
+      `Here's a creative challenge for you!\n\n${JSON.stringify(toolJson)}`,
+      'resp'
+    );
+
+    set((prev) => ({
+      messages: [...prev.messages.filter((m) => m.src !== 'info'), challengeMsg],
+      isProcessing: false
+    }));
+
+    addAchievement({
+      id: 'first_challenge',
+      name: 'First Steps',
+      description: 'Complete your first challenge',
+      category: 'challenges',
+      icon: '🌟',
+      xpReward: 50
+    });
   },
 
   // Compress knowledge from current session (silent, background)
   compressKnowledge: async () => {
-    const { selectedAssistantId, messages, knowledgeExtracted } = get();
+    const { selectedAssistantId, messages, knowledgeExtracted, session, provider: prov, selectedOllamaModel } = get();
     if (knowledgeExtracted || messages.length < 10) return;
 
     try {
-      // Get last 5 user+assistant messages for compression
       const recentMessages = messages
         .filter((m) => m.src === 'req' || m.src === 'resp')
         .slice(-10);
 
       if (recentMessages.length < 5) return;
 
-      // Build knowledge from recent messages
-      const knowledge = {
-        recentTopics: recentMessages.map((m) => m.text.slice(0, 100)),
-        lastInteraction: new Date().toISOString(),
-        messageCount: messages.length
-      };
+      const chatLog = recentMessages
+        .map((m) => `[${m.src === 'req' ? 'User' : 'Assistant'}] ${m.text}`)
+        .join('\n');
 
-      // Save to server (silent, no chat message)
-      await saveKnowledge(selectedAssistantId, { recentActivity: knowledge });
+      const extractionPrompt = `Analyze the following chat conversation and extract important information about the user.
+
+CHAT LOG:
+${chatLog}
+
+Respond with ONLY valid JSON:
+{
+  "interests": ["topic1"],
+  "strengths": ["skill"],
+  "weaknesses": ["area"],
+  "goals": ["goal"],
+  "achievements": ["accomplishment"],
+  "preferences": { "learningStyle": "visual", "pace": "moderate", "topicsEnjoyed": [], "topicsAvoided": [] },
+  "personality": { "tone": "casual", "confidence": "moderate", "humor": true },
+  "progress": { "improvements": [], "recurringMistakes": [], "breakthroughs": [] },
+  "nextSteps": []
+}
+
+Be specific. Only include confident information.`;
+
+      let fullResponse = '';
+      if (!session) throw new Error('AI session not available');
+
+      if (prov === 'ollama') {
+        const stream = session.promptStreaming(extractionPrompt, {
+          model: selectedOllamaModel
+        });
+        for await (const chunk of stream) {
+          fullResponse = chunk;
+        }
+      } else {
+        const stream = session.promptStreaming(extractionPrompt);
+        for await (const chunk of stream) {
+          fullResponse = chunk;
+        }
+      }
+
+      const jsonMatch = fullResponse.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('Failed to parse knowledge JSON');
+
+      const knowledge = JSON.parse(jsonMatch[0]);
+
+      // Save to server if available, otherwise localStorage
+      try {
+        await saveKnowledge(selectedAssistantId, knowledge);
+      } catch {
+        // Fallback to localStorage
+        try {
+          const existing = localStorage.getItem(`lexichat_knowledge_${selectedAssistantId}`);
+          const merged = { ...JSON.parse(existing || '{}'), ...knowledge };
+          localStorage.setItem(`lexichat_knowledge_${selectedAssistantId}`, JSON.stringify(merged));
+        } catch { /* ignore */ }
+      }
 
       set({ knowledgeExtracted: true });
     } catch (err) {

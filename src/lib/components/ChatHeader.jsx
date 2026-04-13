@@ -21,9 +21,9 @@ function ChatHeader({
         <span className="header-label">{providerLabel}</span>
       </div>
       {downloadProgress !== null && (
-        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-800">
+        <div className="download-progress-bar">
           <div
-            className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400 transition-all duration-300"
+            className="download-progress-fill"
             style={{ width: `${downloadProgress}%` }}
           />
         </div>

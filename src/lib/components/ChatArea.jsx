@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import ChatMessage from './ChatMessage';
+import LoadingSkeleton from './LoadingSkeleton';
 
 /**
  * Check if the last assistant message has an unsubmitted tool.
@@ -27,8 +28,12 @@ function getLastActiveTool(messages) {
   return null;
 }
 
-function ChatArea({ messages, assistant, onCopy, lastCopiedId, onToolSubmit, inspiration = 0 }) {
+function ChatArea({ messages, assistant, onCopy, lastCopiedId, onToolSubmit, inspiration = 0, isProcessing = false }) {
   const activeTool = useMemo(() => getLastActiveTool(messages), [messages]);
+
+  // Check if we're waiting for the first AI response (shows skeleton)
+  const showSkeleton = isProcessing && messages.length > 0 &&
+    messages[messages.length - 1]?.src === 'req';
 
   return (
     <div
@@ -61,6 +66,8 @@ function ChatArea({ messages, assistant, onCopy, lastCopiedId, onToolSubmit, ins
           inspiration={inspiration}
         />
       ))}
+
+      {showSkeleton && <LoadingSkeleton />}
     </div>
   );
 }

@@ -162,6 +162,7 @@ function App() {
           lastCopiedId={lastCopiedId}
           onToolSubmit={handleToolSubmit}
           inspiration={dndCharacter?.inspiration || 0}
+          isProcessing={isProcessing}
         />
 
         <ChatInput

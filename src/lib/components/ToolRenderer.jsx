@@ -376,8 +376,8 @@ function RiddleCard({ content, onSubmit }) {
             <strong>🎉 Correct! The answer is: {content.answer}</strong>
           ) : (
             <>
-              <strong>Not quite — The answer is: {content.answer}</strong>
-              <p>You guessed: "{guess}"</p>
+              <strong>Not quite &mdash; The answer is: {content.answer}</strong>
+              <p>You guessed: &ldquo;{guess}&rdquo;</p>
             </>
           )}
           {content.explanation && <p>{content.explanation}</p>}
@@ -444,7 +444,7 @@ function EmojiPictCard({ content, onSubmit }) {
               : `The answer is: ${content.answer}`}
           </strong>
           {!guess.toLowerCase().includes(content.answer.toLowerCase().split(' ')[0]) && (
-            <p>You guessed: "{guess}"</p>
+            <p>You guessed: &ldquo;{guess}&rdquo;</p>
           )}
         </div>
       )}
@@ -645,7 +645,7 @@ function ReflectionCard({ content, onSubmit }) {
 /**
  * Progress Card — visual milestone tracker
  */
-function ProgressCard({ content, onSubmit }) {
+function ProgressCard({ content, onSubmit: _onSubmit }) {
   const milestones = content.milestones || [];
   const completedCount = milestones.filter((m) => m.completed).length;
   const progressPercent =
@@ -822,7 +822,7 @@ function CodeCard({ content, onSubmit }) {
 /**
  * Timeline Card — sequential events display
  */
-function TimelineCard({ content, onSubmit }) {
+function TimelineCard({ content, onSubmit: _onSubmit }) {
   const events = content.events || [];
 
   return (
@@ -851,7 +851,7 @@ function TimelineCard({ content, onSubmit }) {
 /**
  * Comparison Card — side-by-side table
  */
-function ComparisonCard({ content, onSubmit }) {
+function ComparisonCard({ content, onSubmit: _onSubmit }) {
   const items = content.items || [];
   const headers = content.headers || ['Option A', 'Option B'];
 
@@ -988,6 +988,334 @@ function RatingCard({ content, onSubmit }) {
           <strong>Thank you! You rated this {rating} / 5 stars</strong>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Flashcard Card — Front/back vocabulary card with spaced repetition
+ */
+function FlashcardCard({ content, onSubmit }) {
+  const [flipped, setFlipped] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const handleRating = (difficulty) => {
+    setDone(true);
+    onSubmit?.({ difficulty, flipped });
+  };
+
+  return (
+    <div className="tool-card flashcard-card">
+      <div className="tool-card-header">
+        <span className="tool-badge">📇</span>
+        <h4>{content.category ? `${content.category} Flashcard` : 'Vocabulary Flashcard'}</h4>
+      </div>
+
+      <div
+        className={`flashcard ${flipped ? 'flipped' : ''}`}
+        onClick={() => !done && setFlipped(!flipped)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') !done && setFlipped(!flipped); }}
+        aria-label={flipped ? 'Answer side' : 'Question side'}
+      >
+        <div className="flashcard-face flashcard-front">
+          <h3>{content.front || content.word}</h3>
+          {content.phonetic && <p className="flashcard-phonetic">{content.phonetic}</p>}
+          <p className="flashcard-hint">Tap to reveal meaning</p>
+        </div>
+        <div className="flashcard-face flashcard-back">
+          <p>{content.back || content.definition || content.meaning}</p>
+          {content.example && (
+            <p className="flashcard-example">Example: "{content.example}"</p>
+          )}
+        </div>
+      </div>
+
+      {flipped && !done && (
+        <div className="flashcard-buttons">
+          <button type="button" className="difficulty-btn hard" onClick={() => handleRating('hard')}>
+            😰 Again
+          </button>
+          <button type="button" className="difficulty-btn medium" onClick={() => handleRating('medium')}>
+            🤔 Hard
+          </button>
+          <button type="button" className="difficulty-btn easy" onClick={() => handleRating('easy')}>
+            😊 Good
+          </button>
+          <button type="button" className="difficulty-btn very-easy" onClick={() => handleRating('very_easy')}>
+            😎 Easy
+          </button>
+        </div>
+      )}
+
+      {done && (
+        <div className="quiz-explanation">
+          <strong>🎉 Card completed!</strong>
+          <p>We'll review this again at the optimal interval.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Grammar Drill Card — Fill-in-the-blank with hints
+ */
+function GrammarDrillCard({ content, onSubmit }) {
+  const exercises = content.exercises || [];
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [answers, setAnswers] = useState([]);
+  const [currentAnswer, setCurrentAnswer] = useState('');
+  const allDone = answers.length === exercises.length;
+  const correctCount = answers.filter((a) => a.isCorrect).length;
+
+  const currentExercise = exercises[currentIndex];
+
+  const handleSubmitAnswer = () => {
+    if (!currentAnswer.trim()) return;
+
+    const isCorrect = currentAnswer.trim().toLowerCase() === (currentExercise.answer || '').toLowerCase();
+    const newAnswers = [...answers, { question: currentExercise.text, userAnswer: currentAnswer.trim(), isCorrect, explanation: currentExercise.explanation }];
+    setAnswers(newAnswers);
+    setCurrentAnswer('');
+
+    if (currentIndex < exercises.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    }
+
+    onSubmit?.({ answers: newAnswers, totalCorrect: newAnswers.filter((a) => a.isCorrect).length, total: exercises.length });
+  };
+
+  if (allDone) {
+    return (
+      <div className="tool-card grammar-drill-card">
+        <div className="tool-card-header">
+          <span className="tool-badge">✏️</span>
+          <h4>Grammar Drill Complete</h4>
+        </div>
+        <div className="drill-results">
+          <p className="drill-score">Score: {correctCount}/{exercises.length}</p>
+          {answers.map((a, i) => (
+            <div key={i} className={`drill-result ${a.isCorrect ? 'correct' : 'incorrect'}`}>
+              <span className="drill-result-icon">{a.isCorrect ? '✅' : '❌'}</span>
+              <div>
+                <p className="drill-question">{a.question}</p>
+                <p className="drill-answer">
+                  Your answer: <strong>{a.userAnswer}</strong>
+                  {!a.isCorrect && <span> → Correct: <strong>{a.explanation?.split('→')[1]?.trim() || 'see hint'}</strong></span>}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="tool-card grammar-drill-card">
+      <div className="tool-card-header">
+        <span className="tool-badge">✏️</span>
+        <h4>Grammar Drill ({currentIndex + 1}/{exercises.length})</h4>
+      </div>
+      {content.topic && <p className="grammar-topic">Topic: {content.topic}</p>}
+
+      <p className="drill-question-text">{currentExercise.text}</p>
+
+      {content.hints && content.hints[currentIndex] && (
+        <p className="drill-hint">💡 Hint: {content.hints[currentIndex]}</p>
+      )}
+
+      <div className="drill-input-row">
+        <input
+          type="text"
+          className="drill-input"
+          value={currentAnswer}
+          onChange={(e) => setCurrentAnswer(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitAnswer(); }}
+          placeholder="Type your answer..."
+          aria-label="Grammar answer"
+        />
+        <button type="button" className="drill-submit-btn" onClick={handleSubmitAnswer} disabled={!currentAnswer.trim()}>
+          Check
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Writing Correction Card — Annotated feedback
+ */
+function WritingCorrectionCard({ content, onSubmit }) {
+  const [showModel, setShowModel] = useState(false);
+  const [resubmitted, setResubmitted] = useState(false);
+
+  const errors = content.errors || [];
+  const estimatedBand = content.estimatedBand;
+  const targetBand = content.targetBand;
+
+  return (
+    <div className="tool-card writing-correction-card">
+      <div className="tool-card-header">
+        <span className="tool-badge">📝</span>
+        <h4>Writing Correction</h4>
+      </div>
+
+      {content.userText && (
+        <div className="writing-user-text">
+          <p className="writing-label">Your text:</p>
+          <blockquote>{content.userText}</blockquote>
+        </div>
+      )}
+
+      {errors.length > 0 && (
+        <div className="writing-feedback">
+          <h5>Feedback:</h5>
+          {errors.map((err, i) => (
+            <div key={i} className={`writing-error ${err.severity || 'warning'}`}>
+              <span className="error-icon">{err.severity === 'error' ? '❌' : '⚠️'}</span>
+              <div>
+                {err.original && (
+                  <span className="error-original">"{err.original}"</span>
+                )}
+                {err.correction && (
+                  <span className="error-correction"> → "{err.correction}"</span>
+                )}
+                {err.explanation && (
+                  <p className="error-explanation">{err.explanation}</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {estimatedBand && (
+        <div className="writing-band">
+          <p>Estimated Band: <strong>{estimatedBand}</strong>
+            {targetBand && <> → Target: <strong>{targetBand}</strong></>}
+          </p>
+        </div>
+      )}
+
+      <div className="writing-actions">
+        {!showModel && content.modelAnswer && (
+          <button type="button" className="writing-btn" onClick={() => setShowModel(true)}>
+            📖 Show Model Answer
+          </button>
+        )}
+        {showModel && content.modelAnswer && (
+          <div className="writing-model">
+            <p className="writing-label">Model answer:</p>
+            <blockquote>{content.modelAnswer}</blockquote>
+          </div>
+        )}
+        <button type="button" className="writing-btn" onClick={() => { setResubmitted(true); onSubmit?.({ resubmitted: true }); }}>
+          ✍️ Try Again
+        </button>
+      </div>
+
+      {resubmitted && (
+        <div className="quiz-explanation">
+          <strong>Good luck with your revision! Submit when you're ready for feedback.</strong>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Listening Exercise Card — Audio + comprehension questions
+ */
+function ListeningExerciseCard({ content, onSubmit }) {
+  const questions = content.questions || [];
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [answers, setAnswers] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const allDone = answers.length === questions.length;
+  const correctCount = answers.filter((a) => a.isCorrect).length;
+
+  const currentQuestion = questions[currentIndex];
+
+  const handleSubmit = () => {
+    if (selected === null) return;
+
+    const isCorrect = selected === currentQuestion.answer;
+    const newAnswers = [...answers, { question: currentQuestion.text, userAnswer: selected, isCorrect, options: currentQuestion.options }];
+    setAnswers(newAnswers);
+    setSelected(null);
+
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    }
+
+    onSubmit?.({ answers: newAnswers, totalCorrect: newAnswers.filter((a) => a.isCorrect).length, total: questions.length });
+  };
+
+  if (allDone) {
+    return (
+      <div className="tool-card listening-exercise-card">
+        <div className="tool-card-header">
+          <span className="tool-badge">🎧</span>
+          <h4>Listening Exercise Complete</h4>
+        </div>
+        <div className="drill-results">
+          <p className="drill-score">Score: {correctCount}/{questions.length}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="tool-card listening-exercise-card">
+      <div className="tool-card-header">
+        <span className="tool-badge">🎧</span>
+        <h4>Listening: {content.topic || 'Exercise'} ({currentIndex + 1}/{questions.length})</h4>
+      </div>
+
+      {content.text && (
+        <div className="listening-text">
+          <p>{content.text}</p>
+        </div>
+      )}
+
+      {content.speed && (
+        <div className="listening-speed">
+          <span>🐌 {content.speed}x</span>
+        </div>
+      )}
+
+      <p className="listening-question">{currentQuestion.text}</p>
+
+      <div className="quiz-options">
+        {currentQuestion.options?.map((opt, i) => {
+          let className = 'quiz-option';
+          if (selected !== null) {
+            if (i === currentQuestion.answer) className += ' correct';
+            else if (i === selected) className += ' incorrect';
+          } else if (i === selected) {
+            className += ' selected';
+          }
+          return (
+            <button
+              key={i}
+              type="button"
+              className={className}
+              onClick={() => setSelected(i)}
+              disabled={selected !== null}
+            >
+              <span className="quiz-option-letter">{String.fromCharCode(65 + i)}</span>
+              <span className="quiz-option-text">{opt}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <button type="button" className="quiz-submit-btn" onClick={handleSubmit} disabled={selected === null}>
+        Submit Answer
+      </button>
     </div>
   );
 }
@@ -1193,6 +1521,22 @@ function ToolRenderer({ tool, onSubmit, inspiration = 0 }) {
     case 'warning':
     case 'challenge':
       return <ToolNotification tool={tool} />;
+
+    // ═══════════════════════════════════════════
+    // Persona-Specific Tools (Language Tutors)
+    // ═══════════════════════════════════════════
+
+    case 'flashcard':
+      return <FlashcardCard content={tool.content || { front: tool.title, back: tool.description || '' }} onSubmit={onSubmit} />;
+
+    case 'grammar_drill':
+      return <GrammarDrillCard content={tool.content || { exercises: [] }} onSubmit={onSubmit} />;
+
+    case 'writing_correction':
+      return <WritingCorrectionCard content={tool.content || { userText: '', feedback: '' }} onSubmit={onSubmit} />;
+
+    case 'listening_exercise':
+      return <ListeningExerciseCard content={tool.content || { text: '', questions: [] }} onSubmit={onSubmit} />;
 
     default:
       // If tool type is unknown, try to render as a generic info notification

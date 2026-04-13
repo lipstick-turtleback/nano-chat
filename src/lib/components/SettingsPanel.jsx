@@ -53,7 +53,7 @@ function SettingsPanel({
             onClick={onClose}
             aria-label="Close settings"
           >
-            <Cross2Icon className="h-5 w-5 text-gray-500" />
+            <Cross2Icon className="settings-close-icon" />
           </button>
         </div>
 
@@ -70,12 +70,12 @@ function SettingsPanel({
               onValueChange={setFontSize}
             >
               {FONT_SIZES.map((size) => (
-                <div key={size.value} className="flex items-center">
+                <div key={size.value} className="settings-radio-row">
                   <RadioGroup.Item className="settings-radio-item" value={String(size.value)}>
                     <RadioGroup.Indicator className="settings-radio-indicator" />
                   </RadioGroup.Item>
                   <label
-                    className="ml-3 cursor-pointer select-none"
+                    className="settings-radio-label"
                     style={{ fontSize: `${size.value}px` }}
                   >
                     {size.label}
@@ -94,10 +94,10 @@ function SettingsPanel({
               className={`settings-provider-card ${provider === 'chrome' ? 'active' : ''}`}
               onClick={() => onProviderChange('chrome')}
             >
-              <span className="text-2xl">🧠</span>
-              <div className="text-left">
-                <span className="block text-sm font-semibold text-gray-800">Chrome AI</span>
-                <span className="text-xs text-gray-400">
+              <span className="provider-card-emoji">🧠</span>
+              <div className="provider-card-info">
+                <span className="provider-card-name">Chrome AI</span>
+                <span className="provider-card-desc">
                   Gemini Nano — runs locally in Chrome 131+
                 </span>
               </div>
@@ -108,15 +108,15 @@ function SettingsPanel({
               className={`settings-provider-card ${provider === 'ollama' ? 'active' : ''}`}
               onClick={() => onProviderChange('ollama')}
             >
-              <span className="text-2xl">🦙</span>
-              <div className="flex-1 text-left">
-                <span className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+              <span className="provider-card-emoji">🦙</span>
+              <div className="provider-card-info">
+                <span className="provider-card-name">
                   Ollama
                   <span
-                    className={`h-2 w-2 rounded-full ${ollamaConnected ? 'bg-emerald-500' : 'bg-red-400'}`}
+                    className={`status-dot ${ollamaConnected ? 'connected' : 'disconnected'}`}
                   />
                 </span>
-                <span className="text-xs text-gray-400">
+                <span className="provider-card-desc">
                   Local models — requires Ollama running
                 </span>
               </div>
@@ -132,11 +132,11 @@ function SettingsPanel({
                   onValueChange={onModelChange}
                   disabled={ollamaModels.length === 0}
                 >
-                  <Select.Trigger className="settings-select-trigger disabled:opacity-40">
+                  <Select.Trigger className="settings-select-trigger">
                     <Select.Value placeholder="Select model" />
                     <Select.Icon>
                       <svg
-                        className="h-4 w-4 text-gray-400"
+                        className="settings-select-arrow"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -168,7 +168,7 @@ function SettingsPanel({
                   onClick={onRefreshModels}
                   aria-label="Refresh model list"
                 >
-                  <ReloadIcon className="h-4 w-4 text-gray-500" />
+                  <ReloadIcon className="settings-refresh-icon" />
                 </button>
               </div>
               {!ollamaConnected && (
@@ -189,7 +189,7 @@ function SettingsPanel({
               onClick={onExportChat}
               disabled={!hasMessages}
             >
-              <DownloadIcon className="h-4 w-4" />
+              <DownloadIcon className="settings-action-icon" />
               Export Chat
             </button>
             <button
@@ -198,7 +198,7 @@ function SettingsPanel({
               onClick={handleClearChat}
               disabled={!hasMessages}
             >
-              <TrashIcon className="h-4 w-4" />
+              <TrashIcon className="settings-action-icon" />
               Clear Chat
             </button>
           </div>

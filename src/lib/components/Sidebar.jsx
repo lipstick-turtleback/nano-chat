@@ -3,7 +3,7 @@ import { ASSISTANTS } from '../utils/constants';
 
 function Sidebar({ selectedAssistantId, onSelect, disabled }) {
   return (
-    <aside className="sidebar p-4">
+    <aside className="sidebar">
       <h2 className="sidebar-title">Companions</h2>
 
       <fieldset className="companion-radio-group" aria-label="Select AI companion">
