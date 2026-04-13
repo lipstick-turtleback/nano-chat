@@ -1,8 +1,8 @@
 import { useState } from 'react';
 
 /**
- * DnD Narrative Scene Card — story text with action choices
- * Includes "Spend Inspiration" toggle for advantage on the roll
+ * DnD Scene Card — Renders narrative + action buttons with stat+dice+DC.
+ * Supports both new format (actions[]) and legacy format (choices[]).
  */
 function DnDSceneCard({ content, onSubmit, inspiration = 0 }) {
   const [selectedChoice, setSelectedChoice] = useState(null);
@@ -10,18 +10,19 @@ function DnDSceneCard({ content, onSubmit, inspiration = 0 }) {
   const [submitted, setSubmitted] = useState(false);
   const [spendInspiration, setSpendInspiration] = useState(false);
 
-  const choices = content.choices || [];
-  const hasChoices = choices.length > 0;
+  // Support both new (actions) and legacy (choices) formats
+  const actions = content.actions || content.choices || [];
+  const hasActions = actions.length > 0;
   const canSpendInspiration = inspiration > 0 && !submitted;
 
-  const handleSubmit = (choiceIndex) => {
+  const handleSubmit = (actionIndex) => {
     if (submitted) return;
     setSubmitted(true);
-    setSelectedChoice(choiceIndex);
+    setSelectedChoice(actionIndex);
     onSubmit?.({
       type: 'choice',
-      choiceIndex,
-      choice: choices[choiceIndex],
+      choiceIndex: actionIndex,
+      choice: actions[actionIndex],
       customAction: null,
       spendInspiration: spendInspiration && inspiration > 0
     });
@@ -58,13 +59,7 @@ function DnDSceneCard({ content, onSubmit, inspiration = 0 }) {
         </div>
       )}
 
-      {content.situation && (
-        <div className="dnd-situation">
-          <strong>Current Situation:</strong> {content.situation}
-        </div>
-      )}
-
-      {/* Inspiration toggle — shown before choices are made */}
+      {/* Inspiration toggle */}
       {!submitted && canSpendInspiration && (
         <label className="dnd-inspiration-toggle">
           <input
@@ -78,28 +73,44 @@ function DnDSceneCard({ content, onSubmit, inspiration = 0 }) {
         </label>
       )}
 
-      {/* Suggested choices */}
-      {hasChoices && (
-        <div className="dnd-choices">
-          <p className="dnd-choices-label">What do you do?</p>
-          {choices.map((choice, i) => (
-            <button
-              key={choice.id || i}
-              type="button"
-              className={`dnd-choice-btn ${submitted && selectedChoice === i ? 'chosen' : ''} ${submitted && selectedChoice !== i ? 'faded' : ''}`}
-              onClick={() => handleSubmit(i)}
-              disabled={submitted}
-            >
-              <span className="dnd-choice-letter">{String.fromCharCode(65 + i)}</span>
-              <span className="dnd-choice-text">{choice.text}</span>
-              {choice.dc && <span className="dnd-choice-dc">DC {choice.dc}</span>}
-              {submitted && selectedChoice === i && (
-                <span className="dnd-choice-badge">
-                  {spendInspiration ? '✨✓' : '✓'}
-                </span>
-              )}
-            </button>
-          ))}
+      {/* Action buttons */}
+      {hasActions && (
+        <div className="dnd-actions">
+          <p className="dnd-actions-label">What do you do?</p>
+          <div className="dnd-action-grid">
+            {actions.map((action, i) => {
+              const isRest = action.type === 'rest' || (action.dice === null && action.dc === null);
+              return (
+                <button
+                  key={action.id || i}
+                  type="button"
+                  className={`dnd-action-btn ${isRest ? 'rest-action' : ''} ${submitted && selectedChoice === i ? 'chosen' : ''} ${submitted && selectedChoice !== i ? 'faded' : ''}`}
+                  onClick={() => handleSubmit(i)}
+                  disabled={submitted}
+                >
+                  <span className="dnd-action-letter">{String.fromCharCode(65 + i)}</span>
+                  <span className="dnd-action-info">
+                    <span className="dnd-action-label">{action.label || action.text}</span>
+                    {!isRest && (
+                      <span className="dnd-action-stats">
+                        <span className="dnd-stat stat-name">{action.stat || '?'}</span>
+                        <span className="dnd-stat stat-dice">{action.dice || '1d20'}</span>
+                        <span className="dnd-stat stat-dc">DC {action.dc ?? 10}</span>
+                      </span>
+                    )}
+                    {isRest && (
+                      <span className="dnd-stat stat-rest">No roll needed</span>
+                    )}
+                  </span>
+                  {submitted && selectedChoice === i && (
+                    <span className="dnd-choice-badge">
+                      {spendInspiration ? '✨✓' : '✓'}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -107,7 +118,7 @@ function DnDSceneCard({ content, onSubmit, inspiration = 0 }) {
       {!submitted && (
         <div className="dnd-custom-action">
           <label className="dnd-custom-label">
-            Or describe your own action:
+            {content.customActionHint || 'Or describe your own action:'}
           </label>
           <div className="dnd-custom-row">
             <textarea
@@ -126,6 +137,24 @@ function DnDSceneCard({ content, onSubmit, inspiration = 0 }) {
               Submit
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Submitted state */}
+      {submitted && (
+        <div className="dnd-submitted-state">
+          {selectedChoice !== null && actions[selectedChoice] && (
+            <span>
+              Chose: <strong>{actions[selectedChoice].label || actions[selectedChoice].text}</strong>
+              {spendInspiration && <span className="dnd-spent-insp"> ✨ Inspiration spent</span>}
+            </span>
+          )}
+          {selectedChoice === null && customAction && (
+            <span>
+              Custom action: <strong>"{customAction}"</strong>
+              {spendInspiration && <span className="dnd-spent-insp"> ✨ Inspiration spent</span>}
+            </span>
+          )}
         </div>
       )}
     </div>

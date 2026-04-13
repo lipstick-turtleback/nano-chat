@@ -19,6 +19,9 @@ import { TOOL_REFERENCE } from '../utils/toolReference';
 import { getCachedChallenge, cacheChallenge } from '../services/challengeCache';
 import { generateStartingPassives, autoRollPassive } from '../dnd/passiveSkills';
 import { createCampaign } from '../dnd/campaignState';
+import { buildDnDPrompt, buildDnDInitialPrompt as _buildDnDInitialPrompt } from '../dnd/dnDPromptBuilder';
+import { parseDnDResponse } from '../dnd/dnDResponseParser';
+import { applyDnDResponse } from '../dnd/dnDStateApplier';
 
 const API = '/api';
 
@@ -827,12 +830,13 @@ Continue the narrative based on this skill check result.`;
     }
 
     // Insert dice animation message
+    const diceNotation = choice?.dice || (customAction ? '1d20' : '1d20');
     const diceMsg = {
       id: `dice-${Date.now()}`,
       src: 'dice',
       text: JSON.stringify({
         tool: 'dice_roll',
-        notation: '1d20',
+        notation: diceNotation,
         roll: { roll: naturalRoll, advantageRoll, modifier, total: adjustedTotal },
         dc,
         action: actionText,
@@ -872,56 +876,66 @@ Continue the narrative based on this skill check result.`;
       return { messages: [...updated, diceMsg], isProcessing: true };
     });
 
-    // Build DnD prompt for LLM — let IT decide the outcome
+    // Build DnD prompt using the new prompt builder
     const character = get().dndCharacter;
     const campaign = get().dndCampaign;
+    const assistant = ASSISTANTS['Mira'];
+    const systemPrompt = assistant ? `${assistant.description}\n\n${TOOL_REFERENCE}` : '';
 
-    const dndPrompt = `The player takes action in the current scene.
-
-ACTION: "${actionText}" (id: ${actionId})
-${customAction ? `This was a creative custom action they described themselves.` : `They chose from your suggested options.`}
-${inspirationSpent ? '✨ They spent an Inspiration token for this roll!' : ''}
-
-DICE ROLL:
-- Natural roll: ${naturalRoll} on a d20${advantageRoll !== null ? ` (advantage — second roll was ${advantageRoll}, took the higher: ${naturalRoll})` : ''}
-- Modifier: ${modifier >= 0 ? `+${modifier}` : modifier}
-${passiveNotes.length > 0 ? `- Passive skills: ${passiveNotes.join('; ')}\n` : ''}- **Total: ${adjustedTotal}**
-- Target DC: ${dc}
-${naturalRoll === 20 ? '\n🎉 NATURAL 20 — Critical success! Make it spectacular.' : ''}
-${naturalRoll === 1 ? '\n💀 NATURAL 1 — Critical fumble! Make it dramatically entertaining.' : ''}
-
-INSPIRATION TOKENS: ${currentInspiration} remaining
-${currentInspiration === 0 ? 'The player is out of inspiration tokens. They need to earn more through great roleplay!' : ''}
-
-CAMPAIGN CONTEXT:
-- Location: ${campaign?.world?.currentLocation || 'Unknown'}
-- Character: ${character?.name || 'Adventurer'} (${character?.className || 'Fighter'}, Level ${character?.level || 1})
-- HP: ${character?.hp?.current || '?'}/${character?.hp?.max || '?'}
-- AC: ${character?.ac || '?'}
-- Active enemies: ${((campaign?.combat?.enemies) || []).map(e => `${e.name} (HP: ${e.hp?.current || e.hp}/${e.hp?.max || e.maxHp}, AC: ${e.ac})`).join(', ') || 'None'}
-- Quest: ${campaign?.story?.mainQuest || 'Unknown'}
-
-DETERMINE THE OUTCOME:
-Based on the roll (${adjustedTotal} vs DC ${dc}), decide what happens:
-- If total ≥ DC: The action succeeds. Describe the success vividly.
-- If total < DC: The action fails or partially succeeds. Make failure interesting, not punishing.
-- If natural 20: Critical success — maximum effect, extra benefit.
-- If natural 1: Critical fumble — entertaining complication, not game-ending.
-- If inspiration was spent and they still failed: give them a partial success anyway (the token helped).
-
-REWARD INSPIRATION:
-If the player showed exceptional creativity, great roleplay, clever thinking, or selfless heroism, award them an Inspiration token. Mention it in your narrative like "You feel a spark of inspiration..." and include a system event:
-{"tool": "dnd_inspiration", "title": "Inspiration Earned!", "message": "+1 Inspiration token! You now have X."}
-
-Then continue the narrative and present the NEXT scene with 3-4 new action choices (A-D). Include any system events (loot, rest, achievements) if applicable.`;
+    const dndPrompt = buildDnDPrompt({
+      actionText,
+      actionId: customAction ? 'custom' : (choice?.id || 'unknown'),
+      customAction: !!customAction,
+      naturalRoll,
+      advantageRoll: inspirationSpent ? advantageRoll : null,
+      modifier,
+      total: adjustedTotal,
+      dc,
+      diceNotation,
+      isCrit: naturalRoll === 20,
+      isFumble: naturalRoll === 1,
+      passiveNotes,
+      inspirationSpent,
+      currentInspiration,
+      character,
+      campaign,
+      systemPrompt
+    });
 
     try {
       // Stream LLM response — replaces the dice animation with narrative
       await get()._streamDnDResponse(diceMsg.id, dndPrompt);
 
-      // After response completes, save campaign state
-      const { dndCampaign, dndCharacter } = get();
-      saveCampaign(dndCampaign, dndCharacter);
+      // After response completes, parse the JSON and apply state changes
+      const { messages } = get();
+      // Find the last assistant message (the one that replaced the dice animation)
+      const lastResp = [...messages].reverse().find((m) => m.src === 'resp' && m.text && m.text !== 'processing...');
+      if (lastResp?.text) {
+        const parsed = parseDnDResponse(lastResp.text);
+
+        // Apply system events to character/campaign
+        const { dndCharacter: prevChar, dndCampaign: prevCampaign } = get();
+        const { character: updatedChar, campaign: updatedCampaign, notifications } = applyDnDResponse(
+          parsed,
+          { dndCharacter: prevChar, dndCampaign: prevCampaign }
+        );
+
+        // Update store state
+        set({
+          dndCharacter: updatedChar,
+          dndCampaign: updatedCampaign
+        });
+
+        // Render notifications as info messages
+        for (const notif of notifications) {
+          set((prev) => ({
+            messages: [...prev.messages, createMessageObj(notif.message, 'info')]
+          }));
+        }
+
+        // Save campaign to localStorage
+        saveCampaign(updatedCampaign, updatedChar);
+      }
     } catch (err) {
       console.error('DnD narrative failed:', err);
     }
