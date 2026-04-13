@@ -456,7 +456,6 @@ function EmojiPictCard({ content, onSubmit }) {
  * Word Ladder — change one letter at a time
  */
 function WordLadderCard({ content, onSubmit }) {
-  const [currentWord, setCurrentWord] = useState(content.startWord);
   const [attempts, setAttempts] = useState([]);
   const [completed, setCompleted] = useState(false);
 
@@ -996,7 +995,7 @@ function RatingCard({ content, onSubmit }) {
 /**
  * Main Tool Renderer — dispatches to the right card type
  */
-function ToolRenderer({ tool, onSubmit }) {
+function ToolRenderer({ tool, onSubmit, inspiration = 0 }) {
   const { tool: toolType } = tool;
 
   // Interactive tools
@@ -1110,7 +1109,7 @@ function ToolRenderer({ tool, onSubmit }) {
     case 'dnd_quest_update':
     case 'dnd_story_event':
     case 'dnd_encounter':
-      return <DnDSceneCard content={tool.content || tool} onSubmit={onSubmit} />;
+      return <DnDSceneCard content={tool.content || tool} onSubmit={onSubmit} inspiration={inspiration} />;
 
     case 'dnd_skill_check':
       return <DnDSkillCheck content={tool.content || tool} onSubmit={onSubmit} />;
@@ -1122,7 +1121,7 @@ function ToolRenderer({ tool, onSubmit }) {
         narrative: tool.content?.narrative || tool.content?.description || '',
         situation: tool.content?.situation || 'Choose your action',
         choices: tool.content?.actions || tool.content?.choices || []
-      }} onSubmit={onSubmit} />;
+      }} onSubmit={onSubmit} inspiration={inspiration} />;
 
     case 'dnd_loot':
       return <ToolNotification tool={{
@@ -1145,7 +1144,14 @@ function ToolRenderer({ tool, onSubmit }) {
     case 'dnd_shop':
     case 'dnd_levelup':
     case 'dnd_death':
-      return <DnDSceneCard content={tool.content || { title: tool.title, narrative: tool.content?.description || '' }} onSubmit={onSubmit} />;
+      return <DnDSceneCard content={tool.content || { title: tool.title, narrative: tool.content?.description || '' }} onSubmit={onSubmit} inspiration={inspiration} />;
+
+    case 'dnd_inspiration':
+      return <ToolNotification tool={{
+        ...tool,
+        title: tool.title || '✨ Inspiration Earned!',
+        content: { message: tool.content?.message || '+1 Inspiration token!' }
+      }} />;
 
     // New interactive challenge types
     case 'hot_take':

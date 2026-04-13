@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import MessageActions from './MessageActions';
 import ToolRenderer from './ToolRenderer';
 import { renderMarkdown } from '../utils/markdown';
+import DiceRollAnimation from './DiceRollAnimation';
 
 /**
  * Try to parse tool JSON from message text.
@@ -43,7 +44,7 @@ function getDisplayText(text, tool) {
   return text;
 }
 
-function ChatMessage({ message, assistant, onCopy, lastCopiedId, onToolSubmit }) {
+function ChatMessage({ message, assistant, onCopy, lastCopiedId, onToolSubmit, inspiration = 0 }) {
   // Detect tool JSON in the message (must be before any early return)
   const tool = useMemo(() => extractTool(message?.text), [message?.text]);
   const displayText = getDisplayText(message?.text, tool);
@@ -53,7 +54,31 @@ function ChatMessage({ message, assistant, onCopy, lastCopiedId, onToolSubmit })
   const isUser = message.src === 'req';
   const isError = message.src === 'error';
   const isInfo = message.src === 'info';
+  const isDice = message.src === 'dice';
   const isProcessing = message.text === 'processing...';
+
+  // Render dice animation for dice messages
+  if (isDice) {
+    let diceData = null;
+    try {
+      diceData = JSON.parse(message.text);
+    } catch {
+      return null;
+    }
+    if (!diceData) return null;
+    const roll = diceData.roll || {};
+    return (
+      <div className="message-wrapper dice">
+        <div className="message-bubble dice-bubble">
+          <DiceRollAnimation
+            notation={diceData.notation || '1d20'}
+            finalRoll={{ roll: roll.roll, total: roll.total }}
+            modifier={roll.modifier || 0}
+          />
+        </div>
+      </div>
+    );
+  }
 
   let bubbleClass, wrapperClass, avatar, senderName;
 
@@ -108,6 +133,7 @@ function ChatMessage({ message, assistant, onCopy, lastCopiedId, onToolSubmit })
               <ToolRenderer
                 tool={tool}
                 onSubmit={(result) => onToolSubmit?.(message.id, tool, result)}
+                inspiration={inspiration}
               />
             )}
           </>

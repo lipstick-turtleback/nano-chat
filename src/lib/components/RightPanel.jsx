@@ -11,13 +11,13 @@ function RightPanel({
   onChallenge,
   companionProgress,
   isProcessing,
-  dndCampaign,
+  dndCampaign: _dndCampaign,
   dndCharacter
 }) {
   const achievements = useMemo(() => {
     const data = loadPlayerData();
     return data?.achievements || [];
-  }, [assistant?.id]);
+  }, []);
 
   return (
     <aside className="right-panel">

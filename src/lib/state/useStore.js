@@ -17,11 +17,19 @@ import {
 import { pickRandomThemes } from '../utils/themeEngine';
 import { TOOL_REFERENCE } from '../utils/toolReference';
 import { getCachedChallenge, cacheChallenge } from '../services/challengeCache';
-import { rollSkillCheck, startCombat } from '../dnd/combat';
-import { createCampaign, createCharacter } from '../dnd/campaignState';
-import { generateStartingPassives, getPassivesForTrigger, autoRollPassive } from '../dnd/passiveSkills';
+import { generateStartingPassives, autoRollPassive } from '../dnd/passiveSkills';
+import { createCampaign } from '../dnd/campaignState';
 
 const API = '/api';
+
+// Save DnD campaign state to localStorage
+function saveCampaign(campaign, character) {
+  try {
+    localStorage.setItem('lexichat_dnd_campaign', JSON.stringify({ campaign, character }));
+  } catch (err) {
+    console.error('Failed to save DnD campaign:', err);
+  }
+}
 
 // Pick a random greeting from the companion's greeting variations
 function pickGreeting(assistant) {
@@ -390,14 +398,99 @@ export const useStore = create((set, get) => ({
     }, FOCUS_TIMEOUT);
   },
 
-  // Internal: stream AI response without adding a user message bubble
-  _streamAiResponse: async (promptText) => {
+  // Internal: stream AI response and REPLACE a specific message (for DnD dice → narrative)
+  _streamDnDResponse: async (diceMsgId, promptText) => {
     if (!promptText?.trim()) return;
 
     const { session, provider: prov, selectedOllamaModel } = get();
     if (!session) return;
 
-    // Add processing placeholder
+    // Add processing placeholder AFTER the dice message, capture its ID
+    const procId = `proc-${Date.now()}`;
+    const processingMsg = { ...createMessageObj('processing...', 'resp'), id: procId };
+
+    set((prev) => {
+      const updated = [...prev.messages, processingMsg];
+      return { messages: updated, isProcessing: true };
+    });
+
+    const abortController = new AbortController();
+    set({ abortController });
+
+    // Helper: finalize by removing dice msg + processing msg, rendering final text
+    const finalizeResponse = (finalText) => {
+      set((prev) => {
+        const updated = prev.messages
+          .filter(m => m.id !== diceMsgId && m.id !== procId); // Remove dice + processing
+        // Add the final rendered message
+        updated.push({
+          id: `resp-${Date.now()}`,
+          src: 'resp',
+          text: finalText,
+          formattedText: renderMarkdown(finalText),
+          timestamp: new Date().toLocaleTimeString(),
+          isStreaming: false
+        });
+        return { messages: updated, isProcessing: false };
+      });
+    };
+
+    try {
+      if (prov === 'ollama') {
+        // Build history excluding dice and processing messages
+        const allMessages = get().messages.filter(m => m.id !== diceMsgId && m.id !== procId);
+        const history = buildHistory(allMessages);
+        const stream = session.promptStreaming(promptText, {
+          model: selectedOllamaModel,
+          signal: abortController.signal,
+          messages: history
+        });
+
+        let finalText = '';
+        for await (const chunk of stream) {
+          finalText = chunk;
+          set((prev) => {
+            const updated = [...prev.messages];
+            const procIdx = updated.findIndex(m => m.id === procId);
+            if (procIdx >= 0) {
+              updated[procIdx] = { ...updated[procIdx], text: chunk, isStreaming: true };
+            }
+            return { messages: updated };
+          });
+          debouncedScrollToBottom();
+        }
+        finalizeResponse(finalText);
+      } else {
+        const stream = session.promptStreaming(promptText);
+
+        let finalText = '';
+        for await (const chunk of stream) {
+          finalText = chunk;
+          set((prev) => {
+            const updated = [...prev.messages];
+            const procIdx = updated.findIndex(m => m.id === procId);
+            if (procIdx >= 0) {
+              updated[procIdx] = { ...updated[procIdx], text: chunk, isStreaming: true };
+            }
+            return { messages: updated };
+          });
+          debouncedScrollToBottom();
+        }
+        finalizeResponse(finalText);
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      console.error(err);
+      finalizeResponse(`*AI error: ${err.message}*`);
+    }
+  },
+
+  // Internal: simple stream AI response (for non-DnD tool feedback)
+  _streamAiResponse: async (promptText) => {
+    if (!promptText?.trim()) return;
+    const { session, provider: prov, selectedOllamaModel } = get();
+    if (!session) return;
+
     set((prev) => ({
       messages: [...prev.messages, createMessageObj('processing...', 'resp')],
       isProcessing: true
@@ -506,9 +599,19 @@ export const useStore = create((set, get) => ({
     const dndTools = [
       'dnd_narrative', 'dnd_dialog', 'dnd_quest_update', 'dnd_story_event',
       'dnd_encounter', 'dnd_combat', 'dnd_combat_turn', 'dnd_skill_check',
-      'dnd_loot', 'dnd_rest', 'dnd_shop', 'dnd_levelup', 'dnd_death'
+      'dnd_loot', 'dnd_rest', 'dnd_shop', 'dnd_levelup', 'dnd_death',
+      'dnd_inspiration'
     ];
     if (dndTools.includes(toolType)) {
+      // Special case: inspiration award — just update counter, no dice roll
+      if (toolType === 'dnd_inspiration') {
+        const { dndCharacter } = get();
+        const newInsp = (dndCharacter?.inspiration || 0) + 1;
+        const updatedChar = { ...dndCharacter, inspiration: newInsp };
+        set({ dndCharacter: updatedChar });
+        saveCampaign(get().dndCampaign, updatedChar);
+        return;
+      }
       return get().handleDnDChoice(messageId, tool, result);
     }
 
@@ -579,77 +682,118 @@ export const useStore = create((set, get) => ({
     }
   },
 
-  // Handle DnD choice: roll dice → check passives → send to LLM for narrative
+  // Handle DnD choice: roll dice → show animation → LLM decides outcome
   handleDnDChoice: async (messageId, tool, result) => {
     const choice = result.choice;
     const customAction = result.customAction;
+    const spendInspiration = result.spendInspiration || false;
+    const actionText = customAction || choice?.text || 'Unknown action';
+    const actionId = customAction ? 'custom' : (choice?.id || 'unknown');
 
-    // Determine what to roll
+    // Determine DC and modifier
     let dc = choice?.dc || 10;
     let modifier = choice?.modifier || 0;
-    let stat = choice?.stat || 'strength';
 
-    // For custom actions, estimate DC based on creativity/difficulty
+    // For custom actions, estimate DC
     if (customAction) {
       dc = 12 + Math.floor(Math.random() * 4); // DC 12-15
-      modifier = 0; // Will be filled from character stats
+      modifier = 0;
     }
 
-    // Roll the dice
-    const rollResult = rollSkillCheck(modifier, dc);
+    // Get character and check inspiration
+    const { dndCharacter, dndCampaign: _dndCampaign } = get();
+    let currentInspiration = dndCharacter?.inspiration || 0;
+    let inspirationSpent = false;
 
-    // Check passive skills for bonuses
-    const { dndCharacter } = get();
+    // If user chose to spend inspiration and has tokens
+    if (spendInspiration && currentInspiration > 0) {
+      inspirationSpent = true;
+      currentInspiration -= 1;
+      // Update character in store and localStorage
+      set({ dndCharacter: { ...dndCharacter, inspiration: currentInspiration } });
+      try {
+        const raw = localStorage.getItem('lexichat_dnd_campaign');
+        if (raw) {
+          const saved = JSON.parse(raw);
+          saved.character.inspiration = currentInspiration;
+          localStorage.setItem('lexichat_dnd_campaign', JSON.stringify(saved));
+        }
+      } catch { /* ignore */ }
+    }
+
+    // Roll 1d20 immediately
+    let naturalRoll = Math.floor(Math.random() * 20) + 1;
+    let advantageRoll = null;
+
+    // Inspiration or passive advantage: roll twice, take higher
+    if (inspirationSpent) {
+      advantageRoll = Math.floor(Math.random() * 20) + 1;
+      naturalRoll = Math.max(naturalRoll, advantageRoll);
+    }
+
+    const total = naturalRoll + modifier;
+
+    // Get passive skill context — map choice type + environment to triggers
     const passives = dndCharacter?.passives || [];
-    const contextTrigger = choice?.type === 'combat' ? 'combat_start' : choice?.type === 'exploration' ? 'explore_environment' : 'always';
-    const activePassives = getPassivesForTrigger(passives, contextTrigger);
-    const passiveResults = activePassives.map(p => autoRollPassive(p, { stat: modifier }));
+    // Determine context triggers based on choice type and content
+    const choiceType = choice?.type || '';
+    const triggers = ['always'];
+    if (choiceType === 'combat' || actionText.toLowerCase().includes('attack') || actionText.toLowerCase().includes('fight')) {
+      triggers.push('combat_start', 'pre_combat');
+    }
+    if (choiceType === 'exploration' || actionText.toLowerCase().includes('search') || actionText.toLowerCase().includes('investigate') || actionText.toLowerCase().includes('look')) {
+      triggers.push('explore_environment', 'trap_environment');
+    }
+    if (actionText.toLowerCase().includes('dark') || actionText.toLowerCase().includes('cave') || actionText.toLowerCase().includes('tunnel')) {
+      triggers.push('dark_environment');
+    }
+    if (actionText.toLowerCase().includes('ancient') || actionText.includes('rune') || actionText.toLowerCase().includes('magic')) {
+      triggers.push('ancient_environment');
+    }
+    if (actionText.toLowerCase().includes('trap') || actionText.toLowerCase().includes('wire') || actionText.toLowerCase().includes('pit')) {
+      triggers.push('trap_environment');
+    }
+    if (actionText.toLowerCase().includes('treasure') || actionText.toLowerCase().includes('loot') || actionText.toLowerCase().includes('hidden') || actionText.toLowerCase().includes('secret')) {
+      triggers.push('explore_environment', 'treasure_hunter');
+    }
 
-    // Apply passive bonuses (advantage, info reveals, etc.)
-    let finalResult = { ...rollResult };
+    const activePassives = passives.filter(p => triggers.includes(p.trigger));
     const passiveNotes = [];
-    for (const pr of passiveResults) {
-      if (pr?.type === 'advantage') {
-        // Reroll with advantage
-        const advRoll = rollSkillCheck(modifier, dc, true, false);
-        finalResult = { ...advRoll };
-        passiveNotes.push(`${pr.passive}: Advantage applied`);
+    let adjustedTotal = total;
+
+    for (const p of activePassives) {
+      const pr = autoRollPassive(p, { stat: modifier, speed: dndCharacter?.speed });
+      if (pr?.type === 'advantage' && !inspirationSpent) {
+        // Passive advantage: roll again, take higher
+        const advRoll = Math.floor(Math.random() * 20) + 1;
+        const newNatural = Math.max(naturalRoll, advRoll);
+        adjustedTotal = newNatural + modifier;
+        passiveNotes.push(`${pr.passive}: Advantage! Rolled ${naturalRoll} and ${advRoll}, took ${newNatural}`);
       } else if (pr?.type === 'info') {
         passiveNotes.push(`${pr.passive}: ${pr.description}`);
       } else if (pr?.type === 'boost') {
-        finalResult.total += pr.value;
+        adjustedTotal += pr.value;
         passiveNotes.push(`${pr.passive}: +${pr.value}`);
       }
     }
 
-    // Determine outcome text
-    let outcome;
-    if (finalResult.isCrit) {
-      outcome = `CRITICAL SUCCESS! Natural 20! Roll: ${finalResult.roll} + ${modifier} = ${finalResult.total} vs DC ${dc}`;
-    } else if (finalResult.isFumble) {
-      outcome = `CRITICAL FAILURE! Natural 1! Roll: 1 + ${modifier} = ${finalResult.total} vs DC ${dc}`;
-    } else if (finalResult.success) {
-      outcome = `Success! Roll: ${finalResult.roll} + ${modifier} = ${finalResult.total} vs DC ${dc}`;
-    } else {
-      outcome = `Failure. Roll: ${finalResult.roll} + ${modifier} = ${finalResult.total} vs DC ${dc}`;
-    }
+    // Insert dice animation message
+    const diceMsg = {
+      id: `dice-${Date.now()}`,
+      src: 'dice',
+      text: JSON.stringify({
+        tool: 'dice_roll',
+        notation: '1d20',
+        roll: { roll: naturalRoll, advantageRoll, modifier, total: adjustedTotal },
+        dc,
+        action: actionText,
+        inspirationSpent
+      }),
+      formattedText: '',
+      timestamp: new Date().toLocaleTimeString(),
+      isStreaming: false
+    };
 
-    if (passiveNotes.length > 0) {
-      outcome += `\nPassive skills: ${passiveNotes.join('; ')}`;
-    }
-
-    // Build the action text
-    const actionText = customAction || choice?.text || 'Unknown action';
-
-    // Build consequence prompt for LLM
-    const consequence = choice?.consequence || {};
-    const consequenceHint = finalResult.success
-      ? (consequence.success || 'You succeed.')
-      : finalResult.isFumble
-        ? (consequence.failure || 'You fail spectacularly.')
-        : (consequence.partial || 'You partially succeed.');
-
-    // Update tool card with result
     set((prev) => {
       const updated = prev.messages.map((m) => {
         if (m.id === messageId) {
@@ -658,42 +802,77 @@ export const useStore = create((set, get) => ({
             toolResult: {
               tool,
               result,
-              roll: finalResult,
-              passives: passiveResults,
-              feedback: outcome
+              roll: {
+                roll: naturalRoll,
+                advantageRoll,
+                modifier,
+                total: adjustedTotal,
+                dc,
+                isCrit: naturalRoll === 20,
+                isFumble: naturalRoll === 1,
+                inspirationSpent
+              },
+              passives: passiveNotes,
+              feedback: `Rolled ${naturalRoll}${modifier >= 0 ? ` + ${modifier}` : ''} = ${adjustedTotal} vs DC ${dc}`
             }
           };
         }
         return m;
       });
-      return { messages: updated };
+
+      return { messages: [...updated, diceMsg], isProcessing: true };
     });
 
-    // Feed result to LLM for narrative continuation
-    const campaign = get().dndCampaign;
+    // Build DnD prompt for LLM — let IT decide the outcome
     const character = get().dndCharacter;
+    const campaign = get().dndCampaign;
 
-    const dndPrompt = `The player chose: "${actionText}"
+    const dndPrompt = `The player takes action in the current scene.
 
-${customAction ? `Custom action: "${customAction}"` : `Chosen option: ${choice?.text}`}
+ACTION: "${actionText}" (id: ${actionId})
+${customAction ? `This was a creative custom action they described themselves.` : `They chose from your suggested options.`}
+${inspirationSpent ? '✨ They spent an Inspiration token for this roll!' : ''}
 
-DICE RESULT:
-${outcome}
+DICE ROLL:
+- Natural roll: ${naturalRoll} on a d20${advantageRoll !== null ? ` (advantage — second roll was ${advantageRoll}, took the higher: ${naturalRoll})` : ''}
+- Modifier: ${modifier >= 0 ? `+${modifier}` : modifier}
+${passiveNotes.length > 0 ? `- Passive skills: ${passiveNotes.join('; ')}\n` : ''}- **Total: ${adjustedTotal}**
+- Target DC: ${dc}
+${naturalRoll === 20 ? '\n🎉 NATURAL 20 — Critical success! Make it spectacular.' : ''}
+${naturalRoll === 1 ? '\n💀 NATURAL 1 — Critical fumble! Make it dramatically entertaining.' : ''}
+
+INSPIRATION TOKENS: ${currentInspiration} remaining
+${currentInspiration === 0 ? 'The player is out of inspiration tokens. They need to earn more through great roleplay!' : ''}
 
 CAMPAIGN CONTEXT:
 - Location: ${campaign?.world?.currentLocation || 'Unknown'}
+- Character: ${character?.name || 'Adventurer'} (${character?.className || 'Fighter'}, Level ${character?.level || 1})
 - HP: ${character?.hp?.current || '?'}/${character?.hp?.max || '?'}
 - AC: ${character?.ac || '?'}
-- Active enemies: ${(campaign?.enemies || []).map(e => `${e.name} (HP: ${e.hp}/${e.maxHp}, AC: ${e.ac})`).join(', ') || 'None'}
-${passiveNotes.length > 0 ? `\nPASSIVE SKILLS TRIGGERED:\n${passiveNotes.join('\n')}` : ''}
+- Active enemies: ${(campaign?.enemies || []).map(e => `${e.name} (HP: ${e.hp?.current || e.hp}/${e.hp?.max || e.maxHp}, AC: ${e.ac})`).join(', ') || 'None'}
+- Quest: ${campaign?.story?.mainQuest || 'Unknown'}
 
-CONSEQUENCE GUIDANCE:
-${consequenceHint}
+DETERMINE THE OUTCOME:
+Based on the roll (${adjustedTotal} vs DC ${dc}), decide what happens:
+- If total ≥ DC: The action succeeds. Describe the success vividly.
+- If total < DC: The action fails or partially succeeds. Make failure interesting, not punishing.
+- If natural 20: Critical success — maximum effect, extra benefit.
+- If natural 1: Critical fumble — entertaining complication, not game-ending.
+- If inspiration was spent and they still failed: give them a partial success anyway (the token helped).
 
-Continue the narrative. Describe the outcome vividly, factoring in the dice roll, passive skills, and current situation. Then present the NEXT scene with 3-4 new choices (A-D). Return your response as normal narrative text — no JSON needed.`;
+REWARD INSPIRATION:
+If the player showed exceptional creativity, great roleplay, clever thinking, or selfless heroism, award them an Inspiration token. Mention it in your narrative like "You feel a spark of inspiration..." and include a system event:
+{"tool": "dnd_inspiration", "title": "Inspiration Earned!", "message": "+1 Inspiration token! You now have X."}
+
+Then continue the narrative and present the NEXT scene with 3-4 new action choices (A-D). Include any system events (loot, rest, achievements) if applicable.`;
 
     try {
-      await get()._streamAiResponse(dndPrompt);
+      // Stream LLM response — replaces the dice animation with narrative
+      await get()._streamDnDResponse(diceMsg.id, dndPrompt);
+
+      // After response completes, save campaign state
+      const { dndCampaign, dndCharacter } = get();
+      saveCampaign(dndCampaign, dndCharacter);
     } catch (err) {
       console.error('DnD narrative failed:', err);
     }

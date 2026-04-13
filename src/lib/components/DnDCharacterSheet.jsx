@@ -61,6 +61,10 @@ function DnDCharacterSheet({ character }) {
           <span className="dnd-stat-label">Gold</span>
           <span className="dnd-stat-value">💰 {character.gold}</span>
         </div>
+        <div className="dnd-stat">
+          <span className="dnd-stat-label">✨ Insp</span>
+          <span className="dnd-stat-value inspiration-value">{character.inspiration || 0}</span>
+        </div>
       </div>
 
       {/* Ability Scores */}

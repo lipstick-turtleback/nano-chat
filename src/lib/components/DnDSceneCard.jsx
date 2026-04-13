@@ -2,14 +2,17 @@ import { useState } from 'react';
 
 /**
  * DnD Narrative Scene Card — story text with action choices
+ * Includes "Spend Inspiration" toggle for advantage on the roll
  */
-function DnDSceneCard({ content, onSubmit }) {
+function DnDSceneCard({ content, onSubmit, inspiration = 0 }) {
   const [selectedChoice, setSelectedChoice] = useState(null);
   const [customAction, setCustomAction] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [spendInspiration, setSpendInspiration] = useState(false);
 
   const choices = content.choices || [];
   const hasChoices = choices.length > 0;
+  const canSpendInspiration = inspiration > 0 && !submitted;
 
   const handleSubmit = (choiceIndex) => {
     if (submitted) return;
@@ -19,7 +22,8 @@ function DnDSceneCard({ content, onSubmit }) {
       type: 'choice',
       choiceIndex,
       choice: choices[choiceIndex],
-      customAction: null
+      customAction: null,
+      spendInspiration: spendInspiration && inspiration > 0
     });
   };
 
@@ -30,7 +34,8 @@ function DnDSceneCard({ content, onSubmit }) {
       type: 'custom',
       choiceIndex: null,
       choice: null,
-      customAction: customAction.trim()
+      customAction: customAction.trim(),
+      spendInspiration: spendInspiration && inspiration > 0
     });
   };
 
@@ -39,6 +44,11 @@ function DnDSceneCard({ content, onSubmit }) {
       <div className="tool-card-header">
         <span className="tool-badge">🎲</span>
         <h4>{content.title || 'Adventure Scene'}</h4>
+        {inspiration > 0 && (
+          <span className="dnd-inspiration-badge" title={`${inspiration} Inspiration tokens`}>
+            ✨ {inspiration}
+          </span>
+        )}
       </div>
 
       {/* Scene narrative */}
@@ -52,6 +62,20 @@ function DnDSceneCard({ content, onSubmit }) {
         <div className="dnd-situation">
           <strong>Current Situation:</strong> {content.situation}
         </div>
+      )}
+
+      {/* Inspiration toggle — shown before choices are made */}
+      {!submitted && canSpendInspiration && (
+        <label className="dnd-inspiration-toggle">
+          <input
+            type="checkbox"
+            checked={spendInspiration}
+            onChange={(e) => setSpendInspiration(e.target.checked)}
+          />
+          <span className="toggle-label">
+            ✨ Spend Inspiration for advantage (roll twice, take higher)
+          </span>
+        </label>
       )}
 
       {/* Suggested choices */}
@@ -69,7 +93,11 @@ function DnDSceneCard({ content, onSubmit }) {
               <span className="dnd-choice-letter">{String.fromCharCode(65 + i)}</span>
               <span className="dnd-choice-text">{choice.text}</span>
               {choice.dc && <span className="dnd-choice-dc">DC {choice.dc}</span>}
-              {submitted && selectedChoice === i && <span className="dnd-choice-badge">✓</span>}
+              {submitted && selectedChoice === i && (
+                <span className="dnd-choice-badge">
+                  {spendInspiration ? '✨✓' : '✓'}
+                </span>
+              )}
             </button>
           ))}
         </div>

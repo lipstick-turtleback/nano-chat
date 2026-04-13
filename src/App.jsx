@@ -161,6 +161,7 @@ function App() {
           onCopy={copyMessage}
           lastCopiedId={lastCopiedId}
           onToolSubmit={handleToolSubmit}
+          inspiration={dndCharacter?.inspiration || 0}
         />
 
         <ChatInput

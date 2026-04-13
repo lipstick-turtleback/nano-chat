@@ -1,4 +1,5 @@
 import { defineConfig } from 'jest';
+// eslint-disable-next-line no-unused-vars
 import globals from 'globals';
 
 export default defineConfig({

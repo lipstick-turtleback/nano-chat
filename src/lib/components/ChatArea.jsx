@@ -27,7 +27,7 @@ function getLastActiveTool(messages) {
   return null;
 }
 
-function ChatArea({ messages, assistant, onCopy, lastCopiedId, onToolSubmit }) {
+function ChatArea({ messages, assistant, onCopy, lastCopiedId, onToolSubmit, inspiration = 0 }) {
   const activeTool = useMemo(() => getLastActiveTool(messages), [messages]);
 
   return (
@@ -58,6 +58,7 @@ function ChatArea({ messages, assistant, onCopy, lastCopiedId, onToolSubmit }) {
           onCopy={(id) => onCopy(msg.text, id)}
           lastCopiedId={lastCopiedId}
           onToolSubmit={onToolSubmit}
+          inspiration={inspiration}
         />
       ))}
     </div>

@@ -8,7 +8,7 @@ const router = Router();
  * Generate a creative challenge from random themes
  */
 router.post('/generate', async (req, res) => {
-  const { companionId, themes, challengeType } = req.body;
+  const { companionId: _companionId, themes, challengeType } = req.body;
 
   // Pick 2-4 random themes (if not provided)
   const selectedThemes = themes || pickRandomThemes(2 + Math.floor(Math.random() * 3));

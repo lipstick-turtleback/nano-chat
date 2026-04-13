@@ -118,7 +118,8 @@ export function createCharacter(name, className, raceName) {
     ],
     gold: Math.floor(Math.random() * 20) + 10,
     xp: 0,
-    xpToNext: 300
+    xpToNext: 300,
+    inspiration: 3 // Starting inspiration tokens — earned for great roleplay, spent for luck
   };
 }
 
