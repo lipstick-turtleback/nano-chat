@@ -19,7 +19,10 @@ import { TOOL_REFERENCE } from '../utils/toolReference';
 import { getCachedChallenge, cacheChallenge } from '../services/challengeCache';
 import { generateStartingPassives, autoRollPassive } from '../dnd/passiveSkills';
 import { createCampaign } from '../dnd/campaignState';
-import { buildDnDPrompt, buildDnDInitialPrompt as _buildDnDInitialPrompt } from '../dnd/dnDPromptBuilder';
+import {
+  buildDnDPrompt,
+  buildDnDInitialPrompt as _buildDnDInitialPrompt
+} from '../dnd/dnDPromptBuilder';
 import { parseDnDResponse } from '../dnd/dnDResponseParser';
 import { applyDnDResponse } from '../dnd/dnDStateApplier';
 
@@ -101,7 +104,14 @@ function finalizeMessage(prev, index) {
 
 function buildHistory(messages) {
   return messages
-    .filter((m) => m.text && m.src !== 'info' && m.src !== 'dice' && m.text !== 'processing...' && m.src !== 'error')
+    .filter(
+      (m) =>
+        m.text &&
+        m.src !== 'info' &&
+        m.src !== 'dice' &&
+        m.text !== 'processing...' &&
+        m.src !== 'error'
+    )
     .map((m) => ({
       role: m.src === 'req' ? 'user' : 'assistant',
       content: m.text
@@ -194,7 +204,10 @@ export const useStore = create((set, get) => ({
           dndCampaign = newCampaign;
           dndCharacter = character;
           // Save
-          localStorage.setItem('lexichat_dnd_campaign', JSON.stringify({ campaign: dndCampaign, character: dndCharacter }));
+          localStorage.setItem(
+            'lexichat_dnd_campaign',
+            JSON.stringify({ campaign: dndCampaign, character: dndCharacter })
+          );
         }
       } catch (err) {
         console.error('Failed to load DnD campaign:', err);
@@ -423,8 +436,7 @@ export const useStore = create((set, get) => ({
     // Helper: finalize by removing dice msg + processing msg, rendering final text
     const finalizeResponse = (finalText) => {
       set((prev) => {
-        const updated = prev.messages
-          .filter(m => m.id !== diceMsgId && m.id !== procId); // Remove dice + processing
+        const updated = prev.messages.filter((m) => m.id !== diceMsgId && m.id !== procId); // Remove dice + processing
         // Add the final rendered message
         updated.push({
           id: `resp-${Date.now()}`,
@@ -441,7 +453,7 @@ export const useStore = create((set, get) => ({
     try {
       if (prov === 'ollama') {
         // Build history excluding dice and processing messages
-        const allMessages = get().messages.filter(m => m.id !== diceMsgId && m.id !== procId);
+        const allMessages = get().messages.filter((m) => m.id !== diceMsgId && m.id !== procId);
         const history = buildHistory(allMessages);
         const stream = session.promptStreaming(promptText, {
           model: selectedOllamaModel,
@@ -454,7 +466,7 @@ export const useStore = create((set, get) => ({
           finalText = chunk;
           set((prev) => {
             const updated = [...prev.messages];
-            const procIdx = updated.findIndex(m => m.id === procId);
+            const procIdx = updated.findIndex((m) => m.id === procId);
             if (procIdx >= 0) {
               updated[procIdx] = { ...updated[procIdx], text: chunk, isStreaming: true };
             }
@@ -471,7 +483,7 @@ export const useStore = create((set, get) => ({
           finalText = chunk;
           set((prev) => {
             const updated = [...prev.messages];
-            const procIdx = updated.findIndex(m => m.id === procId);
+            const procIdx = updated.findIndex((m) => m.id === procId);
             if (procIdx >= 0) {
               updated[procIdx] = { ...updated[procIdx], text: chunk, isStreaming: true };
             }
@@ -552,6 +564,10 @@ export const useStore = create((set, get) => ({
   },
 
   copyMessage: async (text, messageId) => {
+    if (!text || typeof text !== 'string') {
+      console.error('Cannot copy non-string content');
+      return;
+    }
     try {
       await navigator.clipboard.writeText(text);
       set({ lastCopiedId: messageId });
@@ -600,9 +616,19 @@ export const useStore = create((set, get) => ({
 
     // DnD tools → special dice + passive skills flow
     const dndTools = [
-      'dnd_narrative', 'dnd_dialog', 'dnd_quest_update', 'dnd_story_event',
-      'dnd_encounter', 'dnd_combat', 'dnd_combat_turn', 'dnd_skill_check',
-      'dnd_loot', 'dnd_rest', 'dnd_shop', 'dnd_levelup', 'dnd_death',
+      'dnd_narrative',
+      'dnd_dialog',
+      'dnd_quest_update',
+      'dnd_story_event',
+      'dnd_encounter',
+      'dnd_combat',
+      'dnd_combat_turn',
+      'dnd_skill_check',
+      'dnd_loot',
+      'dnd_rest',
+      'dnd_shop',
+      'dnd_levelup',
+      'dnd_death',
       'dnd_inspiration'
     ];
     if (dndTools.includes(toolType)) {
@@ -625,7 +651,9 @@ export const useStore = create((set, get) => ({
     // For choice-based tools, use subtle info message (not a user bubble)
     if (toolType === 'would_you_rather' || toolType === 'poll') {
       resultSrc = 'info';
-      const chosen = result.option || `Option ${result.selected !== undefined ? (result.selected === 0 ? 'A' : 'B') : '?'}`;
+      const chosen =
+        result.option ||
+        `Option ${result.selected !== undefined ? (result.selected === 0 ? 'A' : 'B') : '?'}`;
       userResultText = `Chose: ${chosen}`;
     } else if (result.isCorrect !== undefined) {
       userResultText = result.isCorrect
@@ -633,9 +661,10 @@ export const useStore = create((set, get) => ({
         : `❌ Not quite — ${tool.content?.explanation || ''}`;
     } else if (result.correctCount !== undefined) {
       const total = result.total || tool.content?.pairs?.length || '?';
-      userResultText = result.correctCount === total
-        ? `🎉 Perfect score: ${result.correctCount}/${total}!`
-        : `📊 Scored ${result.correctCount}/${total}`;
+      userResultText =
+        result.correctCount === total
+          ? `🎉 Perfect score: ${result.correctCount}/${total}!`
+          : `📊 Scored ${result.correctCount}/${total}`;
     } else if (result.text) {
       userResultText = `📝 "${result.text.slice(0, 150)}${result.text.length > 150 ? '...' : ''}"`;
     } else if (result.rating) {
@@ -691,7 +720,7 @@ export const useStore = create((set, get) => ({
     const customAction = result.customAction;
     const spendInspiration = result.spendInspiration || false;
     const actionText = customAction || choice?.text || 'Unknown action';
-    const actionId = customAction ? 'custom' : (choice?.id || 'unknown');
+    const actionId = customAction ? 'custom' : choice?.id || 'unknown';
 
     // If this came from DnDSkillCheck, it already has a roll result — use it directly
     if (result.roll !== undefined && result.total !== undefined) {
@@ -770,7 +799,9 @@ Continue the narrative based on this skill check result.`;
           saved.character.inspiration = currentInspiration;
           localStorage.setItem('lexichat_dnd_campaign', JSON.stringify(saved));
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
     // Roll 1d20 immediately
@@ -790,26 +821,52 @@ Continue the narrative based on this skill check result.`;
     // Determine context triggers based on choice type and content
     const choiceType = choice?.type || '';
     const triggers = ['always'];
-    if (choiceType === 'combat' || actionText.toLowerCase().includes('attack') || actionText.toLowerCase().includes('fight')) {
+    if (
+      choiceType === 'combat' ||
+      actionText.toLowerCase().includes('attack') ||
+      actionText.toLowerCase().includes('fight')
+    ) {
       triggers.push('combat_start', 'pre_combat');
     }
-    if (choiceType === 'exploration' || actionText.toLowerCase().includes('search') || actionText.toLowerCase().includes('investigate') || actionText.toLowerCase().includes('look')) {
+    if (
+      choiceType === 'exploration' ||
+      actionText.toLowerCase().includes('search') ||
+      actionText.toLowerCase().includes('investigate') ||
+      actionText.toLowerCase().includes('look')
+    ) {
       triggers.push('explore_environment', 'trap_environment');
     }
-    if (actionText.toLowerCase().includes('dark') || actionText.toLowerCase().includes('cave') || actionText.toLowerCase().includes('tunnel')) {
+    if (
+      actionText.toLowerCase().includes('dark') ||
+      actionText.toLowerCase().includes('cave') ||
+      actionText.toLowerCase().includes('tunnel')
+    ) {
       triggers.push('dark_environment');
     }
-    if (actionText.toLowerCase().includes('ancient') || actionText.includes('rune') || actionText.toLowerCase().includes('magic')) {
+    if (
+      actionText.toLowerCase().includes('ancient') ||
+      actionText.includes('rune') ||
+      actionText.toLowerCase().includes('magic')
+    ) {
       triggers.push('ancient_environment');
     }
-    if (actionText.toLowerCase().includes('trap') || actionText.toLowerCase().includes('wire') || actionText.toLowerCase().includes('pit')) {
+    if (
+      actionText.toLowerCase().includes('trap') ||
+      actionText.toLowerCase().includes('wire') ||
+      actionText.toLowerCase().includes('pit')
+    ) {
       triggers.push('trap_environment');
     }
-    if (actionText.toLowerCase().includes('treasure') || actionText.toLowerCase().includes('loot') || actionText.toLowerCase().includes('hidden') || actionText.toLowerCase().includes('secret')) {
+    if (
+      actionText.toLowerCase().includes('treasure') ||
+      actionText.toLowerCase().includes('loot') ||
+      actionText.toLowerCase().includes('hidden') ||
+      actionText.toLowerCase().includes('secret')
+    ) {
       triggers.push('explore_environment', 'treasure_hunter');
     }
 
-    const activePassives = passives.filter(p => triggers.includes(p.trigger));
+    const activePassives = passives.filter((p) => triggers.includes(p.trigger));
     const passiveNotes = [];
     let adjustedTotal = total;
 
@@ -820,7 +877,9 @@ Continue the narrative based on this skill check result.`;
         const advRoll = Math.floor(Math.random() * 20) + 1;
         const newNatural = Math.max(naturalRoll, advRoll);
         adjustedTotal = newNatural + modifier;
-        passiveNotes.push(`${pr.passive}: Advantage! Rolled ${naturalRoll} and ${advRoll}, took ${newNatural}`);
+        passiveNotes.push(
+          `${pr.passive}: Advantage! Rolled ${naturalRoll} and ${advRoll}, took ${newNatural}`
+        );
       } else if (pr?.type === 'info') {
         passiveNotes.push(`${pr.passive}: ${pr.description}`);
       } else if (pr?.type === 'boost') {
@@ -909,16 +968,19 @@ Continue the narrative based on this skill check result.`;
       // After response completes, parse the JSON and apply state changes
       const { messages } = get();
       // Find the last assistant message (the one that replaced the dice animation)
-      const lastResp = [...messages].reverse().find((m) => m.src === 'resp' && m.text && m.text !== 'processing...');
+      const lastResp = [...messages]
+        .reverse()
+        .find((m) => m.src === 'resp' && m.text && m.text !== 'processing...');
       if (lastResp?.text) {
         const parsed = parseDnDResponse(lastResp.text);
 
         // Apply system events to character/campaign
         const { dndCharacter: prevChar, dndCampaign: prevCampaign } = get();
-        const { character: updatedChar, campaign: updatedCampaign, notifications } = applyDnDResponse(
-          parsed,
-          { dndCharacter: prevChar, dndCampaign: prevCampaign }
-        );
+        const {
+          character: updatedChar,
+          campaign: updatedCampaign,
+          notifications
+        } = applyDnDResponse(parsed, { dndCharacter: prevChar, dndCampaign: prevCampaign });
 
         // Update store state
         set({
@@ -958,7 +1020,13 @@ Continue the narrative based on this skill check result.`;
 
   // Generate a creative challenge from random themes
   requestChallenge: async () => {
-    const { selectedAssistantId, isProcessing, session, provider: prov, selectedOllamaModel } = get();
+    const {
+      selectedAssistantId,
+      isProcessing,
+      session,
+      provider: prov,
+      selectedOllamaModel
+    } = get();
     if (isProcessing) return;
 
     const assistant = ASSISTANTS[selectedAssistantId];
@@ -1035,8 +1103,9 @@ Make it creative and educational.`;
         }
 
         // Parse JSON from response
-        const jsonMatch = fullResponse.match(/\{[\s\S]*"game"\s*:[\s\S]*\}/) ||
-                          fullResponse.match(/\{[\s\S]*"tool"\s*:[\s\S]*\}/);
+        const jsonMatch =
+          fullResponse.match(/\{[\s\S]*"game"\s*:[\s\S]*\}/) ||
+          fullResponse.match(/\{[\s\S]*"tool"\s*:[\s\S]*\}/);
         if (!jsonMatch) throw new Error('Failed to parse challenge from AI response');
 
         const challenge = JSON.parse(jsonMatch[0]);
@@ -1089,13 +1158,18 @@ Make it creative and educational.`;
 
   // Compress knowledge from current session (silent, background)
   compressKnowledge: async () => {
-    const { selectedAssistantId, messages, knowledgeExtracted, session, provider: prov, selectedOllamaModel } = get();
+    const {
+      selectedAssistantId,
+      messages,
+      knowledgeExtracted,
+      session,
+      provider: prov,
+      selectedOllamaModel
+    } = get();
     if (knowledgeExtracted || messages.length < 10) return;
 
     try {
-      const recentMessages = messages
-        .filter((m) => m.src === 'req' || m.src === 'resp')
-        .slice(-10);
+      const recentMessages = messages.filter((m) => m.src === 'req' || m.src === 'resp').slice(-10);
 
       if (recentMessages.length < 5) return;
 
@@ -1154,7 +1228,9 @@ Be specific. Only include confident information.`;
           const existing = localStorage.getItem(`lexichat_knowledge_${selectedAssistantId}`);
           const merged = { ...JSON.parse(existing || '{}'), ...knowledge };
           localStorage.setItem(`lexichat_knowledge_${selectedAssistantId}`, JSON.stringify(merged));
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
 
       set({ knowledgeExtracted: true });

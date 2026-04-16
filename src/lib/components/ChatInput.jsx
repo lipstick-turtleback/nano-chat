@@ -1,7 +1,16 @@
 import { useAutoResizeTextarea } from '../hooks/useAutoResizeTextarea';
 import { useEffect, useRef } from 'react';
 
-function ChatInput({ value, onChange, onKeyDown, onSend, onCancel, isProcessing, activeTool, toolHint }) {
+function ChatInput({
+  value,
+  onChange,
+  onKeyDown,
+  onSend,
+  onCancel,
+  isProcessing,
+  activeTool,
+  toolHint
+}) {
   const textareaRef = useAutoResizeTextarea(value, 2, 8);
   const hasText = value.trim().length > 0;
   const isOverLimit = value.length > 4000;
@@ -9,8 +18,21 @@ function ChatInput({ value, onChange, onKeyDown, onSend, onCancel, isProcessing,
 
   // Auto-focus when a text-input tool appears
   useEffect(() => {
-    const textTools = ['riddle', 'fill_blank', 'reflection', 'word_ladder', 'emoji_pictionary', 'emoji_pict', 'anagram', 'reorder'];
-    if (activeTool && textTools.includes(activeTool.tool) && activeTool.tool !== prevToolRef.current) {
+    const textTools = [
+      'riddle',
+      'fill_blank',
+      'reflection',
+      'word_ladder',
+      'emoji_pictionary',
+      'emoji_pict',
+      'anagram',
+      'reorder'
+    ];
+    if (
+      activeTool &&
+      textTools.includes(activeTool.tool) &&
+      activeTool.tool !== prevToolRef.current
+    ) {
       // Brief delay so the tool card renders, then focus the main input as fallback hint
       const t = setTimeout(() => {
         textareaRef.current?.focus();
@@ -42,12 +64,10 @@ function ChatInput({ value, onChange, onKeyDown, onSend, onCancel, isProcessing,
           }
           className="chat-input"
           aria-label="Chat message input"
-          disabled={false}
+          disabled={isProcessing}
         />
         <div className="chat-input-actions">
-          <span className={`char-count ${isOverLimit ? 'over-limit' : ''}`}>
-            {value.length}
-          </span>
+          <span className={`char-count ${isOverLimit ? 'over-limit' : ''}`}>{value.length}</span>
           {isProcessing ? (
             <button
               type="button"

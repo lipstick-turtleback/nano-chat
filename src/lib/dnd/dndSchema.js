@@ -17,12 +17,29 @@
   "environment": {
     "location": "The Whispering Mines, Level 2",
     "lighting": "dim",
-    "features": ["rope_bridge", "rusted_gate", "oil_spill"],
-    "hazards": ["unstable_ceiling"],
-    "hidden": {
-      "traps": [
-        { "type": "tripwire", "dc": 14, "hint": "A faint wire catches the dim light" }
-      ],
+    "features": ["rope_bridge", "rusted_gate"],
+    "hazards": ["unstable_ceiling"]
+  },
+  "enemies": [
+    {
+      "id": "goblin_1",
+      "name": "Goblin Warrior",
+      "hp": { "current": 7, "max": 7 },
+      "ac": 15,
+      "status": "alive"
+    }
+  ],
+  "actions": [
+    {
+      "id": "attack",
+      "label": "Attack the goblins",
+      "stat": "STR",
+      "dice": "1d20",
+      "dc": 12,
+      "type": "combat",
+      "description": "Charge forward and strike at the goblins"
+    }
+  ],
       "loot": [
         { "item": "Silver Ring", "dc": 16, "hint": "Something glints behind a loose stone" }
       ],
@@ -62,20 +79,15 @@
       }
     ]
   },
-  "choices": [
+  "actions": [
     {
       "id": "attack",
-      "text": "Attack the goblins with your sword",
-      "type": "combat",
+      "label": "Attack the goblins",
+      "stat": "STR",
+      "dice": "1d20",
       "dc": 12,
-      "stat": "strength",
-      "modifier": 3,
-      "risk": "medium",
-      "consequence": {
-        "success": "You cleave through the first goblin",
-        "failure": "Your swing goes wide. The goblins counterattack!",
-        "partial": "You wound one goblin, but the others close in"
-      }
+      "type": "combat",
+      "description": "Charge forward and strike at the goblins"
     }
   ],
   "systemEvents": [
@@ -100,7 +112,7 @@
  */
 
 export const DND_RESPONSE_SCHEMA = {
-  required: ['narrative', 'situation', 'choices'],
+  required: ['narrative', 'actions'],
   properties: {
     narrative: { type: 'string', description: 'Story text, 2-4 sentences' },
     situation: { type: 'string', description: 'Current situation summary' },
@@ -143,24 +155,19 @@ export const DND_RESPONSE_SCHEMA = {
         passiveRolls: 'array of {skill, roll, result}'
       }
     },
-    choices: {
+    actions: {
       type: 'array',
       items: {
         id: 'string',
-        text: 'string',
-        type: 'string (combat/exploration/social/puzzle/rest)',
-        dc: 'number (optional)',
-        stat: 'string (optional)',
-        modifier: 'number (optional)',
-        risk: 'string (low/medium/high)',
-        consequence: {
-          success: 'string',
-          failure: 'string',
-          partial: 'string'
-        }
+        label: 'string (short action text for button)',
+        stat: 'string (STR|DEX|CON|INT|WIS|CHA or null)',
+        dice: 'string (1d20|1d6|1d8|1d12|etc or null)',
+        dc: 'number (optional, null for rest actions)',
+        type: 'string (combat/exploration/social/rest)',
+        description: 'string'
       },
       minItems: 3,
-      maxItems: 4
+      maxItems: 8
     },
     systemEvents: {
       type: 'array',
@@ -233,20 +240,15 @@ Every response MUST be valid JSON with this exact structure:
       {"skill": "Trap Sense", "roll": 15, "result": "You sense danger ahead"}
     ]
   },
-  "choices": [
+  "actions": [
     {
       "id": "unique_action_id",
-      "text": "Attack the goblin with your sword",
-      "type": "combat",
+      "label": "Attack the goblin with your sword",
+      "stat": "STR",
+      "dice": "1d20",
       "dc": 12,
-      "stat": "strength",
-      "modifier": 3,
-      "risk": "medium",
-      "consequence": {
-        "success": "You strike true!",
-        "failure": "You miss and stumble!",
-        "partial": "You graze it but it retaliates"
-      }
+      "type": "combat",
+      "description": "Charge forward and strike at the goblin"
     }
   ],
   "systemEvents": [
@@ -266,11 +268,9 @@ Every response MUST be valid JSON with this exact structure:
 
 ## RULES:
 - narrative and situation are ALWAYS required
-- choices must have 3-4 options (A-D)
-- Each choice MUST have id, text, type, and consequence object
-- Include enemy HP/AC/vulnerabilities when enemies are present
-- Include hidden traps/loot with DCs for discovery
-- passiveRolls are automatic — triggered by player skills (Trap Sense, Treasure Hunter, etc.)
+- actions must have 3-8 options (A-D or more)
+- Each action MUST have id, label, type, and description
+- Include enemy HP/AC/status when enemies are present
 - systemEvents are for loot, achievements, rest notifications
 - requiresDiceRoll = true when the NEXT player action needs a dice roll
 - NEVER break character — you ARE the Dungeon Master
@@ -278,7 +278,6 @@ Every response MUST be valid JSON with this exact structure:
 ## DICE & OUTCOMES:
 - When player chooses an action, check their modifier vs DC
 - Natural 20 = critical success, Natural 1 = critical failure
-- Factor in passive skill rolls for additional info
 - Update enemy HP, player HP, and story state accordingly
 - ALWAYS narrate the outcome based on the dice result`;
 }
