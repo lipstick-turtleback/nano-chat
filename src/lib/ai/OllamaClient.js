@@ -1,7 +1,7 @@
 import { AIClient } from './AIClient';
+import { DEFAULT_OLLAMA_MODEL } from '../utils/constants';
 
 const OLLAMA_BASE_URL = 'http://localhost:11434';
-const DEFAULT_MODEL = 'gemma4:31b-cloud';
 
 /**
  * Ollama localhost API client.
@@ -42,7 +42,7 @@ export class OllamaClient extends AIClient {
   }
 
   static async createSession(options = {}) {
-    return new OllamaSession(options.systemPrompt || '', options.model || DEFAULT_MODEL);
+    return new OllamaSession(options.systemPrompt || '', options.model || DEFAULT_OLLAMA_MODEL);
   }
 }
 

@@ -553,11 +553,23 @@ export const THEME_POOL = [
 ];
 
 /**
+ * Fisher-Yates shuffle for uniform random selection
+ */
+function fisherYatesShuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/**
  * Pick N unique random themes from the pool (2-4 by default)
  */
 export function pickRandomThemes(count) {
   const n = typeof count === 'number' ? count : Math.floor(Math.random() * 3) + 2; // 2 to 4
 
-  const shuffled = [...THEME_POOL].sort(() => Math.random() - 0.5);
+  const shuffled = fisherYatesShuffle(THEME_POOL);
   return shuffled.slice(0, Math.min(n, THEME_POOL.length));
 }

@@ -7,14 +7,7 @@ import ProgressDashboard from './ProgressDashboard';
  * Right Panel — Persistent widgets next to the chat
  * All widgets stacked vertically so everything is visible at a glance
  */
-function RightPanel({
-  assistant,
-  onChallenge,
-  companionProgress,
-  isProcessing,
-  dndCampaign: _dndCampaign,
-  dndCharacter
-}) {
+function RightPanel({ assistant, onChallenge, companionProgress, isProcessing, dndCharacter }) {
   const [showDashboard, setShowDashboard] = useState(false);
   const achievements = useStore((state) => state.playerAchievements || []);
 

@@ -159,11 +159,21 @@ export function generateStartingPassives(race) {
   const basePassives = racePassives[race] || ['lucky_feat'];
 
   // Add 1-2 random skill passives
-  const skillPassives = ['trap_sense', 'treasure_hunter', 'enemy_vulnerabilities', 'enemys_master', 'ancient_knowledge'];
-  const shuffled = [...skillPassives].sort(() => Math.random() - 0.5);
+  const skillPassives = [
+    'trap_sense',
+    'treasure_hunter',
+    'enemy_vulnerabilities',
+    'enemys_master',
+    'ancient_knowledge'
+  ];
+  const shuffled = [...skillPassives];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
   const randomCount = Math.floor(Math.random() * 2) + 1;
 
-  return [...basePassives, ...shuffled.slice(0, randomCount)].map(id => ({
+  return [...basePassives, ...shuffled.slice(0, randomCount)].map((id) => ({
     id,
     ...PASSIVE_SKILLS[id]
   }));
@@ -173,7 +183,7 @@ export function generateStartingPassives(race) {
  * Get active passives for a trigger
  */
 export function getPassivesForTrigger(passiveList, trigger) {
-  return passiveList.filter(p => p.trigger === trigger || p.trigger === 'always');
+  return passiveList.filter((p) => p.trigger === trigger || p.trigger === 'always');
 }
 
 /**

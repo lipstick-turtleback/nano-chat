@@ -20,10 +20,7 @@ import { TOOL_REFERENCE } from '../utils/toolReference';
 import { getCachedChallenge, cacheChallenge } from '../services/challengeCache';
 import { generateStartingPassives, autoRollPassive } from '../dnd/passiveSkills';
 import { createCampaign } from '../dnd/campaignState';
-import {
-  buildDnDPrompt,
-  buildDnDInitialPrompt as _buildDnDInitialPrompt
-} from '../dnd/dnDPromptBuilder';
+import { buildDnDPrompt } from '../dnd/dnDPromptBuilder';
 import { parseDnDResponse } from '../dnd/dnDResponseParser';
 import { applyDnDResponse } from '../dnd/dnDStateApplier';
 
