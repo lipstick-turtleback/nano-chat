@@ -105,14 +105,7 @@ function finalizeMessage(prev, index) {
 
 function buildHistory(messages) {
   return messages
-    .filter(
-      (m) =>
-        m.text &&
-        m.src !== 'info' &&
-        m.src !== 'dice' &&
-        m.text !== 'processing...' &&
-        m.src !== 'error'
-    )
+    .filter((m) => m.text && m.src !== 'dice' && m.text !== 'processing...' && m.src !== 'error')
     .map((m) => ({
       role: m.src === 'req' ? 'user' : 'assistant',
       content: m.text
@@ -375,8 +368,9 @@ export const useStore = create((set, get) => ({
           set((prev) => updateMessageText(prev, prev.messages.length - 1, chunk));
           debouncedScrollToBottom();
         }
-        // Stream complete — render markdown once
+        // Stream complete — render markdown once and scroll to bottom
         set((prev) => finalizeMessage(prev, prev.messages.length - 1));
+        get()._scrollToBottom();
       } else {
         // Chrome: session already has system prompt via initialPrompts
         const stream = session.promptStreaming(text);
@@ -384,8 +378,9 @@ export const useStore = create((set, get) => ({
           set((prev) => updateMessageText(prev, prev.messages.length - 1, chunk));
           debouncedScrollToBottom();
         }
-        // Stream complete — render markdown once
+        // Stream complete — render markdown once and scroll to bottom
         set((prev) => finalizeMessage(prev, prev.messages.length - 1));
+        get()._scrollToBottom();
       }
 
       // Trigger background knowledge extraction every 5 messages (silent)
@@ -393,10 +388,12 @@ export const useStore = create((set, get) => ({
         get().compressKnowledge();
       }
 
-      // Update companion progress
-      updateCompanionProgress(selectedAssistantId, {
-        totalMessages: newMessageCount
-      });
+      // Update companion progress (only increment sessions at meaningful intervals)
+      if (newMessageCount % 10 === 0) {
+        updateCompanionProgress(selectedAssistantId, {
+          totalMessages: newMessageCount
+        });
+      }
     } catch (err) {
       if (err.name === 'AbortError') return;
       console.error(err);
@@ -419,6 +416,10 @@ export const useStore = create((set, get) => ({
   cancelRequest: () => {
     get().abortController?.abort();
     set({ isProcessing: false, abortController: null });
+    // Clean up any stale dice or processing messages left by DnD flow
+    set((prev) => ({
+      messages: prev.messages.filter((m) => m.src !== 'dice' && m.text !== 'processing...')
+    }));
     setTimeout(() => {
       document.getElementById('chat-input')?.focus();
     }, FOCUS_TIMEOUT);
@@ -432,7 +433,7 @@ export const useStore = create((set, get) => ({
     if (!session) return;
 
     // Add processing placeholder AFTER the dice message, capture its ID
-    const procId = `proc-${Date.now()}`;
+    const procId = `proc-${nextId()}`;
     const processingMsg = { ...createMessageObj('processing...', 'resp'), id: procId };
 
     set((prev) => {
@@ -614,7 +615,8 @@ export const useStore = create((set, get) => ({
     }
   },
 
-  clearChat: () => set({ messages: [], runtimeError: null, lastCopiedId: null }),
+  clearChat: () =>
+    set({ messages: [], runtimeError: null, lastCopiedId: null, knowledgeExtracted: false }),
 
   setTextInputValue: (v) => set({ textInputValue: v }),
   setSelectedOllamaModel: (m) => set({ selectedOllamaModel: m }),

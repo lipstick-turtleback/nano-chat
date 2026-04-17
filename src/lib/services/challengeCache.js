@@ -6,6 +6,7 @@
 const CACHE_KEY = 'lexichat_challenge_cache';
 const CACHE_VERSION = 1;
 const MAX_CACHE_SIZE = 200; // Max items before pruning
+const CHALLENGE_TTL_MS = 86400000; // 24 hours
 
 /**
  * Load the cache from localStorage
@@ -43,11 +44,19 @@ function makeCacheKey(themes) {
 }
 
 /**
- * Get a cached challenge if available
+ * Get a cached challenge if available and not expired
  */
 export function getCachedChallenge(cacheKey) {
   const cache = loadCache();
-  return cache.items[cacheKey] || null;
+  const entry = cache.items[cacheKey];
+  if (!entry) return null;
+  // Skip expired entries (older than CHALLENGE_TTL_MS)
+  if (Date.now() - entry.cachedAt > CHALLENGE_TTL_MS) {
+    delete cache.items[cacheKey];
+    saveCache(cache);
+    return null;
+  }
+  return entry;
 }
 
 /**

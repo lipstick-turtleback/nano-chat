@@ -282,9 +282,11 @@ export function resolveCombatAction(combat, action, party) {
     if (!target) return { combat, error: 'Invalid target' };
 
     const attack = party.attacks?.[0] || { name: 'Unarmed Strike', damage: '1d4', toHit: 2 };
-    const toHit = rollDice('1d20').total + (attack.toHit || 2);
+    const naturalRoll = rollDice('1d20').total;
+    const bonus = attack.toHit || 2;
+    const toHit = naturalRoll + bonus;
     const hit = toHit >= target.ac;
-    const isCrit = toHit - (attack.toHit || 2) === 20;
+    const isCrit = naturalRoll === 20;
 
     let damage = 0;
     if (hit) {
@@ -311,5 +313,5 @@ export function resolveCombatAction(combat, action, party) {
     }
   }
 
-  return { combat, damage: action.type === 'attack' ? (log[log.length - 1]?.damage || 0) : 0 };
+  return { combat, damage: action.type === 'attack' ? log[log.length - 1]?.damage || 0 : 0 };
 }
