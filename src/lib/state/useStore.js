@@ -12,7 +12,8 @@ import { saveKnowledge, buildKnowledgeContext } from '../services/knowledgeServi
 import {
   getCompanionProgress,
   updateCompanionProgress,
-  addAchievement
+  addAchievement,
+  loadPlayerData
 } from '../services/playerStats';
 import { pickRandomThemes } from '../utils/themeEngine';
 import { TOOL_REFERENCE } from '../utils/toolReference';
@@ -165,6 +166,9 @@ export const useStore = create((set, get) => ({
   dndCampaign: null,
   dndCharacter: null,
 
+  // Player achievements (synced from playerStats for reactive UI)
+  playerAchievements: [],
+
   // Abort
   abortController: null,
 
@@ -214,6 +218,11 @@ export const useStore = create((set, get) => ({
       }
     }
 
+    // Save DnD campaign before switching away from Mira
+    if (get().dndCampaign && assistantId !== 'Mira') {
+      saveCampaign(get().dndCampaign, get().dndCharacter);
+    }
+
     set({
       selectedAssistantId: assistantId,
       messages: [],
@@ -225,7 +234,8 @@ export const useStore = create((set, get) => ({
       knowledgeExtracted: false,
       companionProgress, // Store for RightPanel
       dndCampaign,
-      dndCharacter
+      dndCharacter,
+      playerAchievements: loadPlayerData().achievements || []
     });
 
     // Apply theme
@@ -790,18 +800,7 @@ Continue the narrative based on this skill check result.`;
     if (spendInspiration && currentInspiration > 0) {
       inspirationSpent = true;
       currentInspiration -= 1;
-      // Update character in store and localStorage
       set({ dndCharacter: { ...dndCharacter, inspiration: currentInspiration } });
-      try {
-        const raw = localStorage.getItem('lexichat_dnd_campaign');
-        if (raw) {
-          const saved = JSON.parse(raw);
-          saved.character.inspiration = currentInspiration;
-          localStorage.setItem('lexichat_dnd_campaign', JSON.stringify(saved));
-        }
-      } catch {
-        /* ignore */
-      }
     }
 
     // Roll 1d20 immediately

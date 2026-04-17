@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { loadPlayerData } from '../services/playerStats';
+import { useState } from 'react';
+import { useStore } from '../state/useStore';
 import DnDCharacterSheet from './DnDCharacterSheet';
 import ProgressDashboard from './ProgressDashboard';
 
@@ -16,10 +16,7 @@ function RightPanel({
   dndCharacter
 }) {
   const [showDashboard, setShowDashboard] = useState(false);
-  const achievements = useMemo(() => {
-    const data = loadPlayerData();
-    return data?.achievements || [];
-  }, []);
+  const achievements = useStore((state) => state.playerAchievements || []);
 
   return (
     <aside className="right-panel">
@@ -94,9 +91,7 @@ function ProgressWidget({ progress }) {
         </div>
         <div className="stat-row">
           <span className="stat-label">Streak</span>
-          <span className="stat-value">
-            {streakDays > 0 ? `🔥 ${streakDays} days` : '—'}
-          </span>
+          <span className="stat-value">{streakDays > 0 ? `🔥 ${streakDays} days` : '—'}</span>
         </div>
         <div className="stat-row">
           <span className="stat-label">Messages</span>
@@ -115,10 +110,7 @@ function ProgressWidget({ progress }) {
             <div key={name} className="skill-bar">
               <span className="skill-name">{name}</span>
               <div className="skill-track">
-                <div
-                  className="skill-fill"
-                  style={{ width: `${Math.min(value, 100)}%` }}
-                />
+                <div className="skill-fill" style={{ width: `${Math.min(value, 100)}%` }} />
               </div>
               <span className="skill-value">{value}%</span>
             </div>
@@ -161,9 +153,7 @@ function AchievementsWidget({ achievements }) {
         </div>
       ))}
 
-      {unlocked.length > 5 && (
-        <p className="widget-empty">+{unlocked.length - 5} more unlocked</p>
-      )}
+      {unlocked.length > 5 && <p className="widget-empty">+{unlocked.length - 5} more unlocked</p>}
     </div>
   );
 }

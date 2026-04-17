@@ -94,6 +94,8 @@ export function renderMarkdown(text) {
   }
 
   const convertedText = convertLatex(cleanText);
-  const mdHtml = marked.parse(convertedText, MARKED_OPTIONS);
+  // Sanitize input before markdown parsing to prevent XSS via raw HTML in source text
+  const safeInput = sanitizer.sanitize(convertedText, { USE_PROFILES: { html: false } });
+  const mdHtml = marked.parse(safeInput, MARKED_OPTIONS);
   return sanitizer.sanitize(mdHtml);
 }
